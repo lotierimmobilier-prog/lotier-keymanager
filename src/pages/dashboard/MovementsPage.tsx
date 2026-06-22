@@ -2,15 +2,17 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { Plus, CheckCircle, Activity, Filter, Ligature as FileSignature, Image as ImageIcon, Pencil, Trash2, Search, X, MapPin, Hash, Building2 } from 'lucide-react';
+import { Plus, CheckCircle, Activity, Filter, Ligature as FileSignature, Image as ImageIcon, Pencil, Trash2, Search, X, MapPin, Hash, Building2, Bell, Clock, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
 import { PhotoUpload } from '../../components/PhotoUpload';
-import { sendKeyCheckoutEmail } from '../../utils/emailUtils';
+import { sendKeyCheckoutEmail, sendDelayResponseEmail } from '../../utils/emailUtils';
 
 interface Movement {
   id: string;
   key_id: string;
   given_to_name: string;
+  contact_email: string | null;
+  contact_phone: string | null;
   purpose: string | null;
   out_at: string;
   expected_return_at: string;
@@ -28,17 +30,15 @@ interface Movement {
   provider_signature_in_at: string | null;
   photo_in_url: string | null;
   recorded_by?: string;
-  recorder?: {
-    first_name: string;
-    last_name: string;
-  };
-  key?: {
-    label: string;
-  };
-  property?: {
-    reference: string;
-    address: string;
-  };
+  delay_requested_at: string | null;
+  delay_requested_new_date: string | null;
+  delay_request_message: string | null;
+  delay_request_status: string | null;
+  delay_response_message: string | null;
+  delay_responded_at: string | null;
+  recorder?: { first_name: string; last_name: string };
+  key?: { label: string };
+  property?: { reference: string; address: string };
 }
 
 interface KeyItem {
@@ -86,6 +86,9 @@ export function MovementsPage() {
   const [showSignaturesViewer, setShowSignaturesViewer] = useState<{ show: boolean; movement: Movement | null; type: 'out' | 'in' }>({ show: false, movement: null, type: 'out' });
   const [showEditModal, setShowEditModal] = useState<{ show: boolean; movement: Movement | null }>({ show: false, movement: null });
   const [showDeleteModal, setShowDeleteModal] = useState<{ show: boolean; movement: Movement | null }>({ show: false, movement: null });
+  const [showDelayModal, setShowDelayModal] = useState<{ show: boolean; movement: Movement | null }>({ show: false, movement: null });
+  const [delayResponseMsg, setDelayResponseMsg] = useState('');
+  const [delayRespondingTo, setDelayRespondingTo] = useState<string | null>(null);
   const [editReason, setEditReason] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
   const [propertySearch, setPropertySearch] = useState('');
@@ -574,7 +577,71 @@ export function MovementsPage() {
     }
   }
 
-  const filteredMovements = movements.filter((m) => {
+  async function handleDelayResponse(approved: boolean) {
+    if (!showDelayModal.movement || !profile?.id) return;
+    const m = showDelayModal.movement;
+    setDelayRespondingTo(approved ? 'approve' : 'reject');
+
+    try {
+      const newDate = approved ? (m.delay_requested_new_date || null) : null;
+
+      const updates: Record<string, unknown> = {
+        delay_request_status: approved ? 'approved' : 'rejected',
+        delay_response_message: delayResponseMsg || null,
+        delay_responded_at: new Date().toISOString(),
+        delay_responded_by: profile.id,
+      };
+      if (approved && newDate) {
+        updates.expected_return_at = newDate;
+      }
+
+      const { error } = await supabase
+        .from('key_movements')
+        .update(updates)
+        .eq('id', m.id);
+
+      if (error) throw error;
+
+      // Send email response to contractor
+      if (m.contact_email) {
+        const { data: ag } = await supabase
+          .from('agencies')
+          .select('name, address, logo_url, primary_color')
+          .eq('id', profile.agency_id!)
+          .single();
+
+        sendDelayResponseEmail({
+          agencyId: profile.agency_id!,
+          agencyName: (ag as any)?.name || '',
+          agencyAddress: (ag as any)?.address || undefined,
+          agencyLogoUrl: (ag as any)?.logo_url || undefined,
+          agencyPrimaryColor: (ag as any)?.primary_color || undefined,
+          contactEmail: m.contact_email,
+          contactName: m.given_to_name,
+          approved,
+          responseMessage: delayResponseMsg || undefined,
+          propertyReference: m.property?.reference || '',
+          propertyAddress: m.property?.address || '',
+          keyLabel: m.key?.label || '',
+          originalReturnDate: m.expected_return_at,
+          newReturnDate: approved && newDate ? newDate : undefined,
+        }).catch(err => console.error('Delay response email error:', err));
+      }
+
+      setShowDelayModal({ show: false, movement: null });
+      setDelayResponseMsg('');
+      loadData();
+    } catch (err) {
+      console.error('Error responding to delay request:', err);
+      alert('Erreur lors de la réponse à la demande');
+    } finally {
+      setDelayRespondingTo(null);
+    }
+  }
+
+  const pendingDelayCount = movements.filter(m => m.delay_request_status === 'pending').length;
+
+  const filteredMovements = movements.filter(m => {
     const isCompletelyReturned = m.returned_at &&
       m.agency_signature_in &&
       m.provider_signature_in &&
@@ -615,7 +682,15 @@ export function MovementsPage() {
     <DashboardLayout currentPage="movements">
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3">
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Mouvements</h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Mouvements</h1>
+            {pendingDelayCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 bg-orange-100 text-orange-700 text-sm font-semibold px-3 py-1 rounded-full border border-orange-200">
+                <Bell className="w-4 h-4" />
+                {pendingDelayCount} demande{pendingDelayCount > 1 ? 's' : ''} de délai
+              </span>
+            )}
+          </div>
           <button
             onClick={() => setShowCheckoutModal(true)}
             className="flex items-center space-x-2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-secondary transition w-full sm:w-auto justify-center"
@@ -749,6 +824,54 @@ export function MovementsPage() {
                         <p className="font-medium text-slate-900">
                           {firstMovement.recorder.first_name} {firstMovement.recorder.last_name}
                         </p>
+                      </div>
+                    )}
+
+                    {/* Delay request banner */}
+                    {firstMovement.delay_request_status === 'pending' && (
+                      <div className="mt-3 rounded-lg bg-orange-50 border border-orange-200 px-3 py-2.5 flex flex-col sm:flex-row sm:items-center gap-2">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Clock className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-xs font-bold text-orange-700 uppercase tracking-wide">Demande de délai en attente</span>
+                            {firstMovement.delay_requested_new_date && (
+                              <p className="text-xs text-orange-600 mt-0.5">
+                                Nouvelle date souhaitée : <strong>{new Date(firstMovement.delay_requested_new_date).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
+                              </p>
+                            )}
+                            {firstMovement.delay_request_message && (
+                              <p className="text-xs text-orange-600 mt-0.5 truncate">Motif : {firstMovement.delay_request_message}</p>
+                            )}
+                          </div>
+                        </div>
+                        {profile?.role === 'ADMIN' && (
+                          <button
+                            onClick={() => { setShowDelayModal({ show: true, movement: firstMovement }); setDelayResponseMsg(''); }}
+                            className="flex items-center gap-1.5 text-xs font-semibold bg-orange-600 text-white px-3 py-1.5 rounded-lg hover:bg-orange-700 transition flex-shrink-0"
+                          >
+                            <Bell className="w-3.5 h-3.5" />
+                            Répondre
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {firstMovement.delay_request_status === 'approved' && (
+                      <div className="mt-3 rounded-lg bg-green-50 border border-green-200 px-3 py-2 flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        <span className="text-xs text-green-700 font-medium">Délai accordé</span>
+                        {firstMovement.delay_responded_at && (
+                          <span className="text-xs text-green-600 ml-1">
+                            — {new Date(firstMovement.delay_responded_at).toLocaleDateString('fr-FR')}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {firstMovement.delay_request_status === 'rejected' && (
+                      <div className="mt-3 rounded-lg bg-red-50 border border-red-200 px-3 py-2 flex items-center gap-2">
+                        <X className="w-4 h-4 text-red-500 flex-shrink-0" />
+                        <span className="text-xs text-red-700 font-medium">Délai refusé</span>
                       </div>
                     )}
 
@@ -1419,6 +1542,88 @@ export function MovementsPage() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Delay response modal ── */}
+        {showDelayModal.show && showDelayModal.movement && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowDelayModal({ show: false, movement: null })}
+          >
+            <div className="bg-white rounded-xl p-6 max-w-md w-full" onClick={e => e.stopPropagation()}>
+              <h3 className="text-xl font-bold text-slate-900 mb-1">Répondre à la demande de délai</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                {showDelayModal.movement.given_to_name} — {showDelayModal.movement.property?.reference}
+              </p>
+
+              {/* Request details */}
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4 space-y-1.5">
+                {showDelayModal.movement.delay_requested_new_date && (
+                  <p className="text-sm text-orange-800">
+                    <span className="font-semibold">Nouvelle date souhaitée :</span>{' '}
+                    {new Date(showDelayModal.movement.delay_requested_new_date).toLocaleString('fr-FR', {
+                      day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    })}
+                  </p>
+                )}
+                {showDelayModal.movement.delay_request_message && (
+                  <p className="text-sm text-orange-800">
+                    <span className="font-semibold">Motif :</span> {showDelayModal.movement.delay_request_message}
+                  </p>
+                )}
+                <p className="text-xs text-orange-600">
+                  Demande reçue le {showDelayModal.movement.delay_requested_at
+                    ? new Date(showDelayModal.movement.delay_requested_at).toLocaleString('fr-FR')
+                    : '—'}
+                </p>
+              </div>
+
+              {/* Response message */}
+              <div className="mb-5">
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Message pour le prestataire <span className="text-slate-400 font-normal">(optionnel)</span>
+                </label>
+                <textarea
+                  value={delayResponseMsg}
+                  onChange={e => setDelayResponseMsg(e.target.value)}
+                  rows={3}
+                  placeholder="Ex : Délai accordé jusqu'au… / Merci de contacter l'agence…"
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDelayModal({ show: false, movement: null })}
+                  className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition text-sm font-medium"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={() => handleDelayResponse(false)}
+                  disabled={!!delayRespondingTo}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  <ThumbsDown className="w-4 h-4" />
+                  {delayRespondingTo === 'reject' ? 'Envoi…' : 'Refuser'}
+                </button>
+                <button
+                  onClick={() => handleDelayResponse(true)}
+                  disabled={!!delayRespondingTo}
+                  className="flex-1 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60"
+                >
+                  <ThumbsUp className="w-4 h-4" />
+                  {delayRespondingTo === 'approve' ? 'Envoi…' : 'Accepter'}
+                </button>
+              </div>
+
+              {showDelayModal.movement.delay_requested_new_date && (
+                <p className="text-xs text-slate-400 mt-3 text-center">
+                  Si accepté, la date de retour sera mise à jour automatiquement.
+                </p>
+              )}
             </div>
           </div>
         )}

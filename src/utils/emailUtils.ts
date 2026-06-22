@@ -455,3 +455,241 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
     return { success: false, error: String(err) };
   }
 }
+
+// ─── Delay response email ────────────────────────────────────────────────────
+
+export interface DelayResponseEmailParams {
+  agencyId: string;
+  agencyName: string;
+  agencyAddress?: string;
+  agencyLogoUrl?: string;
+  agencyPrimaryColor?: string;
+  contactEmail: string;
+  contactName: string;
+  approved: boolean;
+  responseMessage?: string;
+  propertyReference: string;
+  propertyAddress: string;
+  keyLabel: string;
+  originalReturnDate: string;
+  newReturnDate?: string;
+}
+
+export async function sendDelayResponseEmail(params: DelayResponseEmailParams): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { data: authData } = await supabase.auth.getSession();
+    if (!authData.session) return { success: false, error: 'Non authentifié' };
+
+    const primary = params.agencyPrimaryColor || '#111827';
+    const primaryLight = lighten(primary, 0.90);
+    const primaryMid = lighten(primary, 0.65);
+
+    const logoBlock = params.agencyLogoUrl
+      ? `<img src="${params.agencyLogoUrl}" alt="${params.agencyName}" width="56" height="56"
+              style="width:56px;height:56px;border-radius:50%;object-fit:cover;display:block;border:2px solid ${primary};" />`
+      : `<div style="width:56px;height:56px;border-radius:50%;background:${primary};text-align:center;line-height:56px;font-size:22px;font-weight:900;color:#ffffff;display:inline-block;">${params.agencyName.charAt(0).toUpperCase()}</div>`;
+
+    const statusIcon   = params.approved ? '&#10003;' : '&#10005;';
+    const statusBg     = params.approved ? '#ECFDF5' : '#FEF2F2';
+    const statusBorder = params.approved ? '#6EE7B7' : '#FCA5A5';
+    const statusColor  = params.approved ? '#065F46' : '#991B1B';
+    const statusLabel  = params.approved ? 'Demande acceptée' : 'Demande refusée';
+    const statusSub    = params.approved
+      ? `L'agence a accepté votre demande de délai.`
+      : `L'agence n'est pas en mesure d'accorder ce délai.`;
+
+    const newDateBlock = params.approved && params.newReturnDate ? `
+      <tr>
+        <td style="background:#ffffff;padding:0 24px 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="border:2px solid ${primary};border-radius:12px;overflow:hidden;">
+            <tr>
+              <td style="background:${primary};padding:10px 16px;text-align:center;">
+                <span style="color:rgba(255,255,255,0.85);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">
+                  Nouvelle date de retour
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#ffffff;padding:16px;text-align:center;">
+                <p style="margin:0 0 2px;color:#111827;font-size:17px;font-weight:800;">${fmtDate(params.newReturnDate)}</p>
+                <p style="margin:0;color:${primary};font-size:24px;font-weight:700;">${fmtTime(params.newReturnDate)}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>` : '';
+
+    const rejectedBlock = !params.approved ? `
+      <tr>
+        <td style="background:#ffffff;padding:0 24px 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="border:2px solid #EF4444;border-radius:12px;overflow:hidden;">
+            <tr>
+              <td style="background:#EF4444;padding:10px 16px;text-align:center;">
+                <span style="color:#fff;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">
+                  Date de retour obligatoire
+                </span>
+              </td>
+            </tr>
+            <tr>
+              <td style="background:#fff;padding:16px;text-align:center;">
+                <p style="margin:0 0 2px;color:#111827;font-size:17px;font-weight:800;">${fmtDate(params.originalReturnDate)}</p>
+                <p style="margin:0;color:#EF4444;font-size:24px;font-weight:700;">${fmtTime(params.originalReturnDate)}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>` : '';
+
+    const responseMessageBlock = params.responseMessage ? `
+      <tr>
+        <td style="background:#ffffff;padding:0 24px 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0"
+                 style="border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;">
+            <tr>
+              <td style="background:#FAFAFA;padding:10px 16px;border-bottom:1px solid #F3F4F6;">
+                <span style="color:#6B7280;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Message de l'agence</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:14px 16px;">
+                <p style="margin:0;color:#374151;font-size:14px;line-height:1.7;">${params.responseMessage}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>` : '';
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Réponse à votre demande de délai</title></head>
+<body style="margin:0;padding:0;background:#F7F7F7;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F7F7;padding:32px 16px 48px;">
+<tr><td align="center">
+<table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
+
+  <!-- Header -->
+  <tr>
+    <td style="background:#ffffff;border-radius:16px 16px 0 0;padding:24px 32px;border-bottom:1px solid #F0F0F0;border-top:4px solid ${primary};">
+      <table cellpadding="0" cellspacing="0"><tr>
+        <td>${logoBlock}</td>
+        <td style="padding-left:12px;vertical-align:middle;">
+          <p style="margin:0;color:#111827;font-size:14px;font-weight:700;">${params.agencyName}</p>
+          ${params.agencyAddress ? `<p style="margin:2px 0 0;color:#9CA3AF;font-size:12px;">${params.agencyAddress}</p>` : ''}
+        </td>
+      </tr></table>
+    </td>
+  </tr>
+
+  <!-- Status hero -->
+  <tr>
+    <td style="background:#ffffff;padding:28px 32px 20px;text-align:center;">
+      <div style="width:56px;height:56px;border-radius:50%;background:${statusBg};border:2px solid ${statusBorder};margin:0 auto 14px;text-align:center;line-height:52px;font-size:22px;color:${statusColor};font-weight:800;">
+        ${statusIcon}
+      </div>
+      <h1 style="margin:0 0 6px;color:#111827;font-size:22px;font-weight:800;letter-spacing:-0.02em;">${statusLabel}</h1>
+      <p style="margin:0;color:#6B7280;font-size:14px;">${statusSub}</p>
+    </td>
+  </tr>
+
+  <!-- Greeting -->
+  <tr>
+    <td style="background:#ffffff;padding:4px 32px 20px;">
+      <p style="margin:0;color:#374151;font-size:14px;line-height:1.8;">
+        Bonjour <strong style="color:#111827;">${params.contactName}</strong>,<br>
+        Suite à votre demande de délai pour le bien <strong>${params.propertyReference}</strong>,
+        voici la réponse de l'agence.
+      </p>
+    </td>
+  </tr>
+
+  <!-- Property summary -->
+  <tr>
+    <td style="background:#ffffff;padding:0 24px 20px;">
+      <table width="100%" cellpadding="0" cellspacing="0"
+             style="background:${primaryLight};border:1.5px solid ${primaryMid};border-radius:12px;">
+        <tr>
+          <td style="padding:12px 18px 10px;border-bottom:1px solid ${primaryMid};">
+            <span style="color:${primary};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;">Dossier concerné</span>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:12px 18px;">
+            <p style="margin:0 0 4px;"><span style="color:#9CA3AF;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;">Bien</span></p>
+            <p style="margin:0 0 8px;color:#111827;font-size:14px;font-weight:600;">${params.propertyReference} — ${params.propertyAddress}</p>
+            <p style="margin:0 0 4px;"><span style="color:#9CA3AF;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;">Clé</span></p>
+            <p style="margin:0;color:#374151;font-size:13px;">&#128273; ${params.keyLabel}</p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  ${newDateBlock}
+  ${rejectedBlock}
+  ${responseMessageBlock}
+
+  ${!params.approved ? `
+  <tr>
+    <td style="background:#ffffff;padding:0 24px 24px;">
+      <table width="100%" cellpadding="0" cellspacing="0"
+             style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;">
+        <tr><td style="padding:14px 18px;">
+          <table cellpadding="0" cellspacing="0"><tr>
+            <td style="font-size:16px;padding-right:10px;vertical-align:top;line-height:1.2;">&#9888;&#65039;</td>
+            <td><p style="margin:0;color:#78350F;font-size:13px;line-height:1.7;">
+              Les clés doivent impérativement être restituées à l'agence avant le <strong>${fmtShort(params.originalReturnDate)}</strong>.
+              Des frais pourront être appliqués en cas de retard.
+            </p></td>
+          </tr></table>
+        </td></tr>
+      </table>
+    </td>
+  </tr>` : ''}
+
+  <!-- Footer -->
+  <tr>
+    <td style="background:#ffffff;border-top:1px solid #F3F4F6;padding:20px 32px;border-radius:0 0 16px 16px;">
+      <p style="margin:0 0 4px;color:#111827;font-size:13px;font-weight:700;">${params.agencyName}</p>
+      ${params.agencyAddress ? `<p style="margin:0 0 10px;color:#9CA3AF;font-size:12px;">&#128205; ${params.agencyAddress}</p>` : ''}
+      <p style="margin:0;color:#D1D5DB;font-size:10px;">
+        Email automatique — ne pas répondre &nbsp;·&nbsp;
+        <a href="https://keymanager.io" style="color:#D1D5DB;text-decoration:none;">KeyManager.io</a>
+      </p>
+    </td>
+  </tr>
+
+</table>
+</td></tr>
+</table>
+</body></html>`;
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authData.session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agencyId: params.agencyId,
+          to: params.contactEmail,
+          toName: params.contactName,
+          subject: params.approved
+            ? `Délai accordé — ${params.propertyReference}`
+            : `Demande de délai refusée — ${params.propertyReference}`,
+          html,
+        }),
+      }
+    );
+
+    const result = await response.json();
+    return result;
+  } catch (err) {
+    console.error('sendDelayResponseEmail error:', err);
+    return { success: false, error: String(err) };
+  }
+}

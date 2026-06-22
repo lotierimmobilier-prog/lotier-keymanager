@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { Key, Building, Activity, AlertTriangle, Home, BookOpen, Lightbulb, Bell, Info } from 'lucide-react';
+import { Key, Building, Activity, AlertTriangle, Home, BookOpen, Lightbulb, Bell, Info, Clock, ChevronRight } from 'lucide-react';
 import { Link } from '../../components/Link';
 
 interface Stats {
@@ -68,6 +68,7 @@ export function DashboardPage() {
     recentMovements: [],
   });
   const [contentBlocks, setContentBlocks] = useState<DashboardContent[]>([]);
+  const [pendingDelayCount, setPendingDelayCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export function DashboardPage() {
     }
 
     try {
-      const [keysResult, propertiesResult, movementsResult, contentResult] = await Promise.all([
+      const [keysResult, propertiesResult, movementsResult, contentResult, pendingDelayResult] = await Promise.all([
         supabase
           .from('keys')
           .select('*')
@@ -117,6 +118,11 @@ export function DashboardPage() {
           .select('*')
           .eq('is_active', true)
           .order('display_order', { ascending: true }),
+        supabase
+          .from('key_movements')
+          .select('id', { count: 'exact', head: true })
+          .eq('agency_id', profile.agency_id)
+          .eq('delay_request_status', 'pending'),
       ]);
 
       if (keysResult.error) {
@@ -210,6 +216,7 @@ export function DashboardPage() {
       });
 
       setContentBlocks(contentResult.data || []);
+      setPendingDelayCount(pendingDelayResult.count || 0);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -352,6 +359,25 @@ export function DashboardPage() {
         <p className="text-sm sm:text-base text-slate-600 mb-6 sm:mb-8">
           Bonjour {profile?.first_name}, voici un aperçu de votre agence
         </p>
+
+        {pendingDelayCount > 0 && (
+          <Link to="/dashboard/movements" className="flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 mb-6 hover:bg-amber-100 transition cursor-pointer">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center flex-shrink-0">
+                <Clock className="w-5 h-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="font-semibold text-amber-900 text-sm">
+                  {pendingDelayCount} demande{pendingDelayCount > 1 ? 's' : ''} de délai en attente
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  {pendingDelayCount > 1 ? 'Des artisans ont' : 'Un artisan a'} demandé un délai pour restituer des clés — répondez dès que possible.
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-amber-500 flex-shrink-0" />
+          </Link>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <Link to="/dashboard/key-management" className="bg-white rounded-xl p-4 sm:p-6 border border-slate-200 shadow-sm hover:shadow-md transition cursor-pointer">

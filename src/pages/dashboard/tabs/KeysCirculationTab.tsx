@@ -377,7 +377,8 @@ export function KeysCirculationTab() {
       loadData();
     } catch (error) {
       console.error('Error checking out key:', error);
-      alert('Erreur lors de la sortie de la clé');
+      const msg = error instanceof Error ? error.message : (error as any)?.message || JSON.stringify(error);
+      alert('Erreur lors de la sortie de la clé\n\n' + msg);
     }
   }
 

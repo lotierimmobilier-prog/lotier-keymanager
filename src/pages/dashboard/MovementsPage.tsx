@@ -245,7 +245,7 @@ export function MovementsPage() {
         );
 
         if (!existingContact) {
-          const { data: newContact, error: contactError } = await supabase
+          const { data: newContact } = await supabase
             .from('contacts')
             .insert({
               agency_id: profile.agency_id,
@@ -253,14 +253,12 @@ export function MovementsPage() {
               last_name: lastName,
               email: formData.contact_email,
               phone: formData.contact_phone,
-              source: 'manual_entry'
             })
             .select()
             .single();
 
-          if (!contactError && newContact) {
+          if (newContact) {
             contactId = newContact.id;
-            await loadData();
           }
         } else {
           contactId = existingContact.id;
@@ -419,7 +417,8 @@ export function MovementsPage() {
       loadData();
     } catch (error) {
       console.error('Error checking out key:', error);
-      alert('Erreur lors de la sortie de la clé');
+      const msg = error instanceof Error ? error.message : (error as any)?.message || JSON.stringify(error);
+      alert('Erreur lors de la sortie de la clé\n\n' + msg);
     }
   }
 

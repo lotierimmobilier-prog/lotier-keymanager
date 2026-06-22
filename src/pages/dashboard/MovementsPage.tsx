@@ -312,17 +312,21 @@ export function MovementsPage() {
 
         const { data: agencyForEmail } = await supabase
           .from('agencies')
-          .select('name, logo_url')
+          .select('name, address, logo_url, primary_color, secondary_color')
           .eq('id', profile.agency_id)
           .single();
 
         if (keysForEmail && agencyForEmail) {
           const firstKey = (keysForEmail[0] as any);
           const prop = firstKey?.properties;
+          const ag = agencyForEmail as any;
           sendKeyCheckoutEmail({
             agencyId: profile.agency_id,
-            agencyName: agencyForEmail.name,
-            logoUrl: (agencyForEmail as any).logo_url || undefined,
+            agencyName: ag.name,
+            agencyAddress: ag.address || undefined,
+            agencyLogoUrl: ag.logo_url || undefined,
+            agencyPrimaryColor: ag.primary_color || undefined,
+            agencySecondaryColor: ag.secondary_color || undefined,
             contactEmail: formData.contact_email,
             contactName: formData.given_to_name,
             keyLabels: keysForEmail.map((k: any) => k.label),
@@ -808,7 +812,6 @@ export function MovementsPage() {
                 </div>
               ) : checkoutStep === 'form' ? (
                 <form onSubmit={handleCheckout} className="space-y-4">
-                  {/* Property search */}
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
                       Sélectionner le bien *

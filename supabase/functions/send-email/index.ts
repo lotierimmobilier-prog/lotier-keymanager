@@ -89,7 +89,13 @@ Deno.serve(async (req: Request) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      result = await sendViaResend({ apiKey: agency.email_api_key, from: `${fromName} <${fromAddress}>`, to: toName ? `${toName} <${to}>` : to, subject, html });
+      result = await sendViaResend({
+        apiKey: agency.email_api_key,
+        from: `${fromName} <${fromAddress}>`,
+        to: toName ? `${toName} <${to}>` : to,
+        subject,
+        html,
+      });
     } else if (provider === "brevo") {
       if (!agency.email_api_key) {
         return new Response(
@@ -97,7 +103,15 @@ Deno.serve(async (req: Request) => {
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      result = await sendViaBrevo({ apiKey: agency.email_api_key, fromEmail: fromAddress, fromName, to, toName: toName || to, subject, html });
+      result = await sendViaBrevo({
+        apiKey: agency.email_api_key,
+        fromEmail: fromAddress,
+        fromName,
+        to,
+        toName: toName || to,
+        subject,
+        html,
+      });
     } else {
       result = { success: false, error: `Fournisseur "${provider}" non supporté` };
     }
@@ -127,7 +141,6 @@ async function smtpRead(conn: Deno.Conn): Promise<string> {
     const n = await conn.read(buf);
     if (n === null) break;
     full += dec.decode(buf.subarray(0, n));
-    // A complete SMTP response ends with a line "NNN <text>\r\n" (space not dash)
     const lines = full.split("\r\n").filter(Boolean);
     if (lines.length > 0 && /^\d{3} /.test(lines[lines.length - 1])) break;
   }
@@ -160,15 +173,12 @@ async function sendViaSmtp(opts: {
       conn = await Deno.connect({ hostname: opts.host, port: opts.port, transport: "tcp" });
     }
 
-    // Greeting
     let resp = await smtpRead(conn);
     if (!smtpOk(resp, 220)) throw new Error(`Greeting: ${resp.trim()}`);
 
-    // EHLO
     resp = await smtpCmd(conn, `EHLO keymanager`);
     if (!smtpOk(resp, 250)) throw new Error(`EHLO: ${resp.trim()}`);
 
-    // STARTTLS for plain connections
     if (!opts.tls && resp.includes("STARTTLS")) {
       resp = await smtpCmd(conn, "STARTTLS");
       if (!smtpOk(resp, 220)) throw new Error(`STARTTLS: ${resp.trim()}`);
@@ -177,7 +187,6 @@ async function sendViaSmtp(opts: {
       if (!smtpOk(resp, 250)) throw new Error(`EHLO after TLS: ${resp.trim()}`);
     }
 
-    // AUTH LOGIN
     resp = await smtpCmd(conn, "AUTH LOGIN");
     if (!smtpOk(resp, 334)) throw new Error(`AUTH LOGIN: ${resp.trim()}`);
 
@@ -187,14 +196,12 @@ async function sendViaSmtp(opts: {
     resp = await smtpCmd(conn, btoa(opts.pass));
     if (!smtpOk(resp, 235)) throw new Error(`Password: ${resp.trim()}`);
 
-    // Envelope
     resp = await smtpCmd(conn, `MAIL FROM:<${opts.from}>`);
     if (!smtpOk(resp, 250)) throw new Error(`MAIL FROM: ${resp.trim()}`);
 
     resp = await smtpCmd(conn, `RCPT TO:<${opts.to}>`);
     if (!smtpOk(resp, 250)) throw new Error(`RCPT TO: ${resp.trim()}`);
 
-    // DATA
     resp = await smtpCmd(conn, "DATA");
     if (!smtpOk(resp, 354)) throw new Error(`DATA: ${resp.trim()}`);
 
@@ -240,7 +247,9 @@ async function sendViaSmtp(opts: {
 
 // ── Resend ─────────────────────────────────────────────────────────────────
 
-async function sendViaResend(opts: { apiKey: string; from: string; to: string; subject: string; html: string }) {
+async function sendViaResend(opts: {
+  apiKey: string; from: string; to: string; subject: string; html: string;
+}) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${opts.apiKey}`, "Content-Type": "application/json" },
@@ -252,7 +261,10 @@ async function sendViaResend(opts: { apiKey: string; from: string; to: string; s
 
 // ── Brevo ──────────────────────────────────────────────────────────────────
 
-async function sendViaBrevo(opts: { apiKey: string; fromEmail: string; fromName: string; to: string; toName: string; subject: string; html: string }) {
+async function sendViaBrevo(opts: {
+  apiKey: string; fromEmail: string; fromName: string;
+  to: string; toName: string; subject: string; html: string;
+}) {
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
     headers: { "api-key": opts.apiKey, "Content-Type": "application/json" },

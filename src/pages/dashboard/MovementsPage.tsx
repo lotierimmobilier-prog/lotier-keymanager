@@ -275,6 +275,7 @@ export function MovementsPage() {
         taken_by_user_id: profile.id,
         given_to_name: formData.given_to_name,
         contact_phone: formData.contact_phone || null,
+        contact_email: formData.contact_email || null,
         purpose: formData.purpose || null,
         expected_return_at: expectedReturnDate,
         notes: formData.notes || null,

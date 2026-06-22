@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabase';
-import { Plus, CheckCircle, Filter, Ligature as FileSignature, Image as ImageIcon, Pencil, Trash2, Send, Info, X, Clock, Activity, Search, MapPin, Hash, Building2 } from 'lucide-react';
+import { Plus, CheckCircle, Filter, FileSignature, Image as ImageIcon, Pencil, Trash2, Send, Info, X, Clock, Activity, Search, MapPin, Hash, Building2, Mail } from 'lucide-react';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
 import { PhotoUpload } from '../../../components/PhotoUpload';
 import { sendKeyCheckoutEmail } from '../../../utils/emailUtils';
@@ -17,6 +17,7 @@ interface Movement {
   notes: string | null;
   responsibility_transferred: boolean;
   contact_phone: string | null;
+  contact_email: string | null;
   agency_signature_out: string | null;
   agency_signature_out_at: string | null;
   provider_signature_out: string | null;
@@ -88,6 +89,7 @@ export function KeysCirculationTab() {
   const [editReason, setEditReason] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
   const [propertySearch, setPropertySearch] = useState('');
   const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
   const [formData, setFormData] = useState({
@@ -241,6 +243,7 @@ export function KeysCirculationTab() {
         taken_by_user_id: profile.id,
         given_to_name: formData.given_to_name,
         contact_phone: formData.contact_phone || null,
+        contact_email: formData.contact_email || null,
         purpose: formData.purpose || null,
         expected_return_at: expectedReturnDate,
         notes: formData.notes || null,
@@ -585,6 +588,45 @@ export function KeysCirculationTab() {
     }
   }
 
+  async function resendEmail(movement: Movement) {
+    if (!profile?.agency_id || !movement.contact_email) return;
+
+    setSendingEmailId(movement.id);
+
+    try {
+      const { data: agencyData } = await supabase
+        .from('agencies')
+        .select('name')
+        .eq('id', profile.agency_id)
+        .single();
+
+      const result = await sendKeyCheckoutEmail({
+        agencyId: profile.agency_id,
+        agencyName: agencyData?.name || 'Agence',
+        contactEmail: movement.contact_email,
+        contactName: movement.given_to_name,
+        keyLabels: [movement.key?.label || 'Clé'],
+        propertyReference: movement.property?.reference || '',
+        propertyAddress: movement.property?.address || '',
+        outAt: movement.out_at,
+        expectedReturnAt: movement.expected_return_at,
+        agencySignature: movement.agency_signature_out || undefined,
+        providerSignature: movement.provider_signature_out || undefined,
+      });
+
+      if (result.success) {
+        alert('Email renvoyé avec succès !');
+      } else {
+        alert(`Erreur lors de l'envoi : ${result.error}`);
+      }
+    } catch (err) {
+      console.error('Erreur renvoi email:', err);
+      alert('Erreur lors de l\'envoi de l\'email');
+    } finally {
+      setSendingEmailId(null);
+    }
+  }
+
   function getStatusColor(expectedReturn: string): string {
     const now = new Date();
     const returnDate = new Date(expectedReturn);
@@ -769,6 +811,22 @@ export function KeysCirculationTab() {
                           <>
                             <Send className="w-4 h-4" />
                             <span>Rappel SMS</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {firstMovement.contact_email && (
+                      <button
+                        onClick={() => resendEmail(firstMovement)}
+                        disabled={sendingEmailId === firstMovement.id}
+                        className="flex items-center space-x-2 text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
+                      >
+                        {sendingEmailId === firstMovement.id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                        ) : (
+                          <>
+                            <Mail className="w-4 h-4" />
+                            <span>Renvoyer email</span>
                           </>
                         )}
                       </button>

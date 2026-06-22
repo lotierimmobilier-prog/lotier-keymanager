@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabase';
-import { Plus, Edit, Trash2, Key, AlertCircle, Camera, Search, ChevronRight, X, QrCode } from 'lucide-react';
+import { Plus, Pencil, Trash2, Key, AlertCircle, Camera, Search, ChevronRight, X, QrCode } from 'lucide-react';
 import { isUnlimited, formatKeyLimit } from '../../../utils/constants';
 
 interface KeyItem {
@@ -490,7 +490,7 @@ export function KeysInventoryTab() {
                         }}
                         className="p-2 text-amber-700 hover:bg-amber-50 rounded-lg transition"
                       >
-                        <Edit className="w-4 h-4" />
+                        <Pencil className="w-4 h-4" />
                       </button>
                       <button
                         onClick={(e) => {

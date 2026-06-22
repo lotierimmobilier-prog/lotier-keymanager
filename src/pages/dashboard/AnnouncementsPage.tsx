@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { Plus, Edit, Trash2, MessageSquare, Info, AlertCircle, BookOpen } from 'lucide-react';
+import { Plus, Pencil, Trash2, MessageSquare, Info, AlertCircle, BookOpen } from 'lucide-react';
 
 interface Announcement {
   id: string;
@@ -233,7 +233,7 @@ export function AnnouncementsPage() {
                       onClick={() => openModal(announcement)}
                       className="p-2 text-amber-700 hover:bg-amber-50 rounded-lg transition"
                     >
-                      <Edit className="w-5 h-5" />
+                      <Pencil className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleDelete(announcement.id)}

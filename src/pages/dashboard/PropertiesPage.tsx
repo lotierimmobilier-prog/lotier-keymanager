@@ -4,7 +4,7 @@ import { useModal } from '../../contexts/ModalContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { CSVImporter } from '../../components/CSVImporter';
-import { Plus, CreditCard as Edit, Trash2, Building, Upload, Camera, Minus, QrCode, File as FileEdit, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building, Upload, Camera, Minus, Printer, Tag, Search } from 'lucide-react';
 
 interface Property {
   id: string;
@@ -617,7 +617,7 @@ export function PropertiesPage() {
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
                             title="QR Codes de ce bien"
                           >
-                            <QrCode className="w-4 h-4" />
+                            <Printer className="w-4 h-4" />
                           </button>
                           {(profile?.role === 'ADMIN' || profile?.role === 'agency_admin') && (
                             <button
@@ -625,14 +625,14 @@ export function PropertiesPage() {
                               className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition"
                               title="Modifier la référence"
                             >
-                              <FileEdit className="w-4 h-4" />
+                              <Tag className="w-4 h-4" />
                             </button>
                           )}
                           <button
                             onClick={() => openModal(property)}
                             className="p-2 text-amber-700 hover:bg-amber-50 rounded-lg transition"
                           >
-                            <Edit className="w-4 h-4" />
+                            <Pencil className="w-4 h-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(property.id)}
@@ -664,7 +664,7 @@ export function PropertiesPage() {
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
                         title="QR Codes de ce bien"
                       >
-                        <QrCode className="w-5 h-5" />
+                        <Printer className="w-5 h-5" />
                       </button>
                       {(profile?.role === 'ADMIN' || profile?.role === 'agency_admin') && (
                         <button
@@ -672,14 +672,14 @@ export function PropertiesPage() {
                           className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition"
                           title="Modifier la référence"
                         >
-                          <FileEdit className="w-5 h-5" />
+                          <Tag className="w-5 h-5" />
                         </button>
                       )}
                       <button
                         onClick={() => openModal(property)}
                         className="p-2 text-amber-700 hover:bg-amber-50 rounded-lg transition"
                       >
-                        <Edit className="w-5 h-5" />
+                        <Pencil className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleDelete(property.id)}

@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useModal } from '../../contexts/ModalContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { Plus, Edit, Trash2, Users, Upload, Download, Search, Info } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, Upload, Download, Search, Info } from 'lucide-react';
 
 interface Contact {
   id: string;
@@ -397,7 +397,7 @@ export function ContactsPage() {
                           onClick={() => openModal(contact)}
                           className="p-2 text-amber-700 hover:bg-amber-50 rounded-lg transition"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(contact.id)}

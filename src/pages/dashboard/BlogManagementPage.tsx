@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { Plus, Edit, Trash2, Eye, EyeOff, FileText, Upload, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye, EyeOff, FileText, Upload, X } from 'lucide-react';
 
 interface BlogArticle {
   id: string;
@@ -483,7 +483,7 @@ export function BlogManagementPage() {
                       onClick={() => openEditModal(article)}
                       className="p-2 text-slate-600 hover:bg-slate-100 rounded-lg transition"
                     >
-                      <Edit className="w-5 h-5" />
+                      <Pencil className="w-5 h-5" />
                     </button>
                     <button
                       onClick={() => handleDelete(article)}

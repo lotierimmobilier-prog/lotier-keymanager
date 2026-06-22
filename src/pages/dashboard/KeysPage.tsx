@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { Plus, CreditCard as Edit, Trash2, Key, AlertCircle, Camera, Upload, QrCode } from 'lucide-react';
+import { Plus, Pencil, Trash2, Key, AlertCircle, Camera, Upload, QrCode } from 'lucide-react';
 import { isUnlimited, formatKeyLimit } from '../../utils/constants';
 import { QrCodeGenerator } from '../../components/QrCodeGenerator';
 
@@ -441,7 +441,7 @@ export function KeysPage() {
                           onClick={() => openModal(key)}
                           className="p-2 text-amber-700 hover:bg-amber-50 rounded-lg transition"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Pencil className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => handleDelete(key.id)}

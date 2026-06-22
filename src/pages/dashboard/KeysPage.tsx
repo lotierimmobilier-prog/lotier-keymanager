@@ -21,6 +21,8 @@ interface KeyItem {
   key_bike: boolean;
   key_building: boolean;
   key_other: string | null;
+  parking_spot_number: string | null;
+  badge_serial: string | null;
   property?: {
     reference: string;
     address: string;
@@ -70,6 +72,8 @@ export function KeysPage() {
     key_bike: false,
     key_building: false,
     key_other: '',
+    parking_spot_number: '',
+    badge_serial: '',
   });
 
   useEffect(() => {
@@ -210,6 +214,8 @@ export function KeysPage() {
         key_bike: formData.key_bike,
         key_building: formData.key_building,
         key_other: formData.key_other || null,
+        parking_spot_number: formData.parking_spot_number || null,
+        badge_serial: formData.badge_serial || null,
         agency_id: profile.agency_id,
       };
 
@@ -244,6 +250,8 @@ export function KeysPage() {
         key_bike: false,
         key_building: false,
         key_other: '',
+        parking_spot_number: '',
+        badge_serial: '',
       });
       loadData();
     } catch (error) {
@@ -286,6 +294,8 @@ export function KeysPage() {
         key_bike: key.key_bike || false,
         key_building: key.key_building || false,
         key_other: key.key_other || '',
+        parking_spot_number: key.parking_spot_number || '',
+        badge_serial: key.badge_serial || '',
       });
     } else {
       setEditingKey(null);
@@ -303,6 +313,8 @@ export function KeysPage() {
         key_bike: false,
         key_building: false,
         key_other: '',
+        parking_spot_number: '',
+        badge_serial: '',
       });
     }
     setShowModal(true);
@@ -609,6 +621,17 @@ export function KeysPage() {
                       />
                       <span className="text-sm text-slate-700">Badge</span>
                     </label>
+                    {formData.key_badge && (
+                      <div className="ml-6">
+                        <input
+                          type="text"
+                          value={formData.badge_serial}
+                          onChange={(e) => setFormData({ ...formData, badge_serial: e.target.value })}
+                          placeholder="Numéro de série du badge"
+                          className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                    )}
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -616,8 +639,19 @@ export function KeysPage() {
                         onChange={(e) => setFormData({ ...formData, key_parking: e.target.checked })}
                         className="w-4 h-4 text-amber-700 border-slate-300 rounded focus:ring-primary"
                       />
-                      <span className="text-sm text-slate-700">Bip parking</span>
+                      <span className="text-sm text-slate-700">Bip parking / Box / Garage</span>
                     </label>
+                    {formData.key_parking && (
+                      <div className="ml-6">
+                        <input
+                          type="text"
+                          value={formData.parking_spot_number}
+                          onChange={(e) => setFormData({ ...formData, parking_spot_number: e.target.value })}
+                          placeholder="Numéro de parking / box / garage"
+                          className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                    )}
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"

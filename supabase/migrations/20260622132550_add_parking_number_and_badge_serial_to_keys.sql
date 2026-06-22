@@ -1,0 +1,3 @@
+ALTER TABLE keys
+  ADD COLUMN IF NOT EXISTS parking_spot_number TEXT,
+  ADD COLUMN IF NOT EXISTS badge_serial TEXT;

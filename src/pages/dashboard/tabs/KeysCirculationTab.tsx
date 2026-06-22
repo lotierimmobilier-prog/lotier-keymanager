@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { supabase } from '../../../lib/supabase';
-import { Plus, CheckCircle, Filter, FileSignature, Image as ImageIcon, Pencil, Trash2, Send, Info, X, Clock, Activity, Search, MapPin, Hash, Building2, Mail } from 'lucide-react';
+import { Plus, CheckCircle, Filter, Ligature as FileSignature, Image as ImageIcon, Pencil, Trash2, Send, Info, X, Clock, Activity, Search, MapPin, Hash, Building2, Mail } from 'lucide-react';
 import { SignatureCanvas } from '../../../components/SignatureCanvas';
 import { PhotoUpload } from '../../../components/PhotoUpload';
 import { sendKeyCheckoutEmail } from '../../../utils/emailUtils';
@@ -90,6 +90,8 @@ export function KeysCirculationTab() {
   const [deleteReason, setDeleteReason] = useState('');
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sendingEmailId, setSendingEmailId] = useState<string | null>(null);
+  const [emailInputId, setEmailInputId] = useState<string | null>(null);
+  const [emailInputValue, setEmailInputValue] = useState('');
   const [propertySearch, setPropertySearch] = useState('');
   const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
   const [formData, setFormData] = useState({
@@ -588,8 +590,10 @@ export function KeysCirculationTab() {
     }
   }
 
-  async function resendEmail(movement: Movement) {
-    if (!profile?.agency_id || !movement.contact_email) return;
+  async function resendEmail(movement: Movement, overrideEmail?: string) {
+    if (!profile?.agency_id) return;
+    const emailTo = overrideEmail || movement.contact_email;
+    if (!emailTo) return;
 
     setSendingEmailId(movement.id);
 
@@ -603,7 +607,7 @@ export function KeysCirculationTab() {
       const result = await sendKeyCheckoutEmail({
         agencyId: profile.agency_id,
         agencyName: agencyData?.name || 'Agence',
-        contactEmail: movement.contact_email,
+        contactEmail: emailTo,
         contactName: movement.given_to_name,
         keyLabels: [movement.key?.label || 'Clé'],
         propertyReference: movement.property?.reference || '',
@@ -615,6 +619,8 @@ export function KeysCirculationTab() {
       });
 
       if (result.success) {
+        setEmailInputId(null);
+        setEmailInputValue('');
         alert('Email renvoyé avec succès !');
       } else {
         alert(`Erreur lors de l'envoi : ${result.error}`);
@@ -815,20 +821,56 @@ export function KeysCirculationTab() {
                         )}
                       </button>
                     )}
-                    {firstMovement.contact_email && (
+                    {firstMovement.contact_email ? (
                       <button
                         onClick={() => resendEmail(firstMovement)}
                         disabled={sendingEmailId === firstMovement.id}
                         className="flex items-center space-x-2 text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition disabled:opacity-50"
                       >
                         {sendingEmailId === firstMovement.id ? (
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                         ) : (
                           <>
                             <Mail className="w-4 h-4" />
                             <span>Renvoyer email</span>
                           </>
                         )}
+                      </button>
+                    ) : emailInputId === firstMovement.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="email"
+                          value={emailInputValue}
+                          onChange={e => setEmailInputValue(e.target.value)}
+                          placeholder="email@prestataire.fr"
+                          className="text-sm px-2 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 w-44"
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && emailInputValue) resendEmail(firstMovement, emailInputValue);
+                            if (e.key === 'Escape') { setEmailInputId(null); setEmailInputValue(''); }
+                          }}
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => { if (emailInputValue) resendEmail(firstMovement, emailInputValue); }}
+                          disabled={!emailInputValue || sendingEmailId === firstMovement.id}
+                          className="text-sm bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-emerald-700 transition disabled:opacity-40"
+                        >
+                          <Mail className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => { setEmailInputId(null); setEmailInputValue(''); }}
+                          className="text-sm text-slate-500 hover:text-slate-700 px-1"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setEmailInputId(firstMovement.id); setEmailInputValue(''); }}
+                        className="flex items-center space-x-2 text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition"
+                      >
+                        <Mail className="w-4 h-4" />
+                        <span>Envoyer email</span>
                       </button>
                     )}
                     {profile?.role === 'ADMIN' && (

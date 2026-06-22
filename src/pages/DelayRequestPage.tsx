@@ -122,12 +122,14 @@ export function DelayRequestPage() {
         {/* Agency header */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-4">
           <div style={{ height: 4, background: primary }} />
-          <div className="px-6 py-4 flex items-center gap-3">
+          <div className="px-6 py-4 flex items-center gap-4">
             {logoUrl ? (
-              <img src={logoUrl} alt={agencyName} className="w-10 h-10 rounded-full object-cover border-2 flex-shrink-0"
-                   style={{ borderColor: primary }} />
+              <div className="w-14 h-14 rounded-xl bg-white border flex items-center justify-center flex-shrink-0 overflow-hidden shadow-sm"
+                   style={{ borderColor: `${primary}30` }}>
+                <img src={logoUrl} alt={agencyName} className="w-full h-full object-contain p-1" />
+              </div>
             ) : (
-              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 text-white font-bold"
+              <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-bold text-xl shadow-sm"
                    style={{ background: primary }}>
                 {agencyName.charAt(0)}
               </div>

@@ -47,6 +47,8 @@ interface KeyItem {
   property?: {
     reference: string;
     address: string;
+    city: string | null;
+    postal_code: string | null;
   };
 }
 
@@ -143,7 +145,9 @@ export function MovementsPage() {
             status,
             properties (
               reference,
-              address
+              address,
+              city,
+              postal_code
             )
           `)
           .eq('agency_id', profile.agency_id)

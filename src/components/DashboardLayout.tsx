@@ -2,7 +2,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useModal } from '../contexts/ModalContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Key, Home, Building, Users, Activity, Settings, LogOut, BookUser, Store, Shield, Palette, CreditCard, MessageSquare, Menu, X, BarChart3, Clock, RefreshCw, TrendingUp, ShoppingCart, Package, FileText, FileEdit, List } from 'lucide-react';
+import { Key, Home, Building, Users, Activity, Settings, LogOut, BookUser, Store, Shield, Palette, CreditCard, MessageSquare, Menu, X, BarChart3, Clock, RefreshCw, TrendingUp, ShoppingCart, Package, FileText, File as FileEdit, List, Mail } from 'lucide-react';
 import { Link } from './Link';
 import { supabase } from '../lib/supabase';
 import { useEffect, useState } from 'react';
@@ -96,6 +96,7 @@ export function DashboardLayout({ children, currentPage = '' }: DashboardLayoutP
     { name: 'Statistiques', icon: BarChart3, href: '/dashboard/stats', id: 'stats' },
     { name: 'Annonces', icon: MessageSquare, href: '/dashboard/announcements', id: 'announcements' },
     { name: 'Configuration SMS', icon: MessageSquare, href: '/dashboard/sms-config', id: 'sms-config' },
+    { name: 'Configuration Email', icon: Mail, href: '/dashboard/email-config', id: 'email-config' },
     { name: 'Bons de Commande', icon: ShoppingCart, href: '/dashboard/purchase-orders', id: 'purchase-orders' },
     { name: 'Abonnement', icon: CreditCard, href: '/dashboard/subscription', id: 'subscription' },
     { name: 'Personnalisation', icon: Palette, href: '/dashboard/branding', id: 'branding' },

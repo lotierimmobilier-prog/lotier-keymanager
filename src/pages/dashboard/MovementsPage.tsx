@@ -5,6 +5,7 @@ import { DashboardLayout } from '../../components/DashboardLayout';
 import { Plus, CheckCircle, Activity, Filter, Ligature as FileSignature, Image as ImageIcon, Pencil, Trash2, Search, X, MapPin, Hash, Building2 } from 'lucide-react';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
 import { PhotoUpload } from '../../components/PhotoUpload';
+import { sendKeyCheckoutEmail } from '../../utils/emailUtils';
 
 interface Movement {
   id: string;
@@ -300,6 +301,38 @@ export function MovementsPage() {
         .in('id', keysToCheckout);
 
       if (keyError) throw keyError;
+
+      // Send confirmation email (fire-and-forget)
+      if (formData.contact_email && newMovements && newMovements.length > 0) {
+        const { data: keysForEmail } = await supabase
+          .from('keys')
+          .select('id, label, properties(reference, address)')
+          .in('id', keysToCheckout);
+
+        const { data: agencyForEmail } = await supabase
+          .from('agencies')
+          .select('name')
+          .eq('id', profile.agency_id)
+          .single();
+
+        if (keysForEmail && agencyForEmail) {
+          const firstKey = (keysForEmail[0] as any);
+          const prop = firstKey?.properties;
+          sendKeyCheckoutEmail({
+            agencyId: profile.agency_id,
+            agencyName: agencyForEmail.name,
+            contactEmail: formData.contact_email,
+            contactName: formData.given_to_name,
+            keyLabels: keysForEmail.map((k: any) => k.label),
+            propertyReference: prop?.reference || '',
+            propertyAddress: prop?.address || '',
+            outAt: now,
+            expectedReturnAt: expectedReturnDate,
+            agencySignature: formData.agency_signature_out || undefined,
+            providerSignature: formData.provider_signature_out || undefined,
+          }).catch(err => console.error('Email error:', err));
+        }
+      }
 
       if (!formData.disable_sms && formData.contact_phone && newMovements && newMovements.length > 0) {
         const { data: keysData } = await supabase

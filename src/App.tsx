@@ -23,6 +23,7 @@ import { BrandingPage } from './pages/dashboard/BrandingPage';
 import { BrandedLoginPage } from './pages/BrandedLoginPage';
 import { AnnouncementsPage } from './pages/dashboard/AnnouncementsPage';
 import { SmsConfigPage } from './pages/dashboard/SmsConfigPage';
+import { EmailConfigPage } from './pages/dashboard/EmailConfigPage';
 import { StatsPage } from './pages/dashboard/StatsPage';
 import { KeysTrackerPage } from './pages/dashboard/KeysTrackerPage';
 import { KeyManagementPage } from './pages/dashboard/KeyManagementPage';
@@ -191,6 +192,8 @@ function Router() {
       return <AnnouncementsPage />;
     case '/dashboard/sms-config':
       return <SmsConfigPage />;
+    case '/dashboard/email-config':
+      return <EmailConfigPage />;
     case '/dashboard/stats':
       return <StatsPage />;
     case '/dashboard/keys-tracker':

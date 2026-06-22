@@ -5,7 +5,7 @@ import { DashboardLayout } from '../../components/DashboardLayout';
 import { Plus, CheckCircle, Activity, Filter, Ligature as FileSignature, Image as ImageIcon, Pencil, Trash2, Search, X, MapPin, Hash, Building2, Bell, Clock, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
 import { PhotoUpload } from '../../components/PhotoUpload';
-import { sendKeyCheckoutEmail, sendDelayResponseEmail } from '../../utils/emailUtils';
+import { sendKeyCheckoutEmail, sendAgencyCheckoutNotificationEmail, sendDelayResponseEmail } from '../../utils/emailUtils';
 
 interface Movement {
   id: string;
@@ -315,7 +315,7 @@ export function MovementsPage() {
 
         const { data: agencyForEmail } = await supabase
           .from('agencies')
-          .select('name, address, logo_url, primary_color, secondary_color, email_from_address')
+          .select('name, address, logo_url, primary_color, secondary_color, email_from_address, notification_email')
           .eq('id', profile.agency_id)
           .single();
 
@@ -323,7 +323,7 @@ export function MovementsPage() {
           const firstKey = (keysForEmail[0] as any);
           const prop = firstKey?.properties;
           const ag = agencyForEmail as any;
-          sendKeyCheckoutEmail({
+          const emailParams = {
             agencyId: profile.agency_id,
             agencyName: ag.name,
             agencyAddress: ag.address || undefined,
@@ -340,7 +340,12 @@ export function MovementsPage() {
             outAt: now,
             expectedReturnAt: expectedReturnDate,
             movementId: newMovements[0].id,
-          }).catch(err => console.error('Email error:', err));
+          };
+          sendKeyCheckoutEmail(emailParams).catch(err => console.error('Email error:', err));
+          if (ag.notification_email) {
+            sendAgencyCheckoutNotificationEmail({ ...emailParams, notificationEmail: ag.notification_email })
+              .catch(err => console.error('Agency email error:', err));
+          }
         }
       }
 

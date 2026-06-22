@@ -8,6 +8,7 @@ interface EmailConfig {
   email_provider: string;
   email_from_address: string;
   email_from_name: string;
+  notification_email: string;
   // SMTP
   email_smtp_host: string;
   email_smtp_port: number;
@@ -45,6 +46,7 @@ export function EmailConfigPage() {
     email_provider: 'smtp',
     email_from_address: '',
     email_from_name: '',
+    notification_email: '',
     email_smtp_host: '',
     email_smtp_port: 587,
     email_smtp_user: '',
@@ -68,7 +70,7 @@ export function EmailConfigPage() {
     try {
       const { data, error } = await supabase
         .from('agencies')
-        .select('email_provider, email_from_address, email_from_name, email_api_key, email_smtp_host, email_smtp_port, email_smtp_user, email_smtp_pass, email_smtp_secure')
+        .select('email_provider, email_from_address, email_from_name, email_api_key, email_smtp_host, email_smtp_port, email_smtp_user, email_smtp_pass, email_smtp_secure, notification_email')
         .eq('id', profile.agency_id)
         .single();
       if (error) throw error;
@@ -77,6 +79,7 @@ export function EmailConfigPage() {
           email_provider: data.email_provider || 'smtp',
           email_from_address: data.email_from_address || '',
           email_from_name: data.email_from_name || '',
+          notification_email: data.notification_email || '',
           email_api_key: data.email_api_key || '',
           email_smtp_host: data.email_smtp_host || '',
           email_smtp_port: data.email_smtp_port || 587,
@@ -102,6 +105,7 @@ export function EmailConfigPage() {
           email_provider: config.email_provider,
           email_from_address: config.email_from_address,
           email_from_name: config.email_from_name,
+          notification_email: config.notification_email || null,
           email_api_key: config.email_api_key,
           email_smtp_host: config.email_smtp_host,
           email_smtp_port: config.email_smtp_port,
@@ -257,6 +261,23 @@ export function EmailConfigPage() {
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Email de notification agence
+                <span className="ml-1.5 text-xs font-normal text-slate-400">(gestion@, copie interne)</span>
+              </label>
+              <input
+                type="email"
+                value={config.notification_email}
+                onChange={e => setConfig({ ...config, notification_email: e.target.value })}
+                placeholder="gestion@votre-agence.fr"
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+              />
+              <p className="text-xs text-slate-400 mt-1">
+                Recevra une copie à chaque remise de clés et une notification lors des demandes de délai avec lien d'approbation.
+              </p>
             </div>
 
             {/* SMTP specific fields */}

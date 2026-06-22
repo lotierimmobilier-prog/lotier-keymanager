@@ -456,7 +456,125 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
   }
 }
 
-// ─── Delay response email ────────────────────────────────────────────────────
+// ─── Agency checkout notification email ─────────────────────────────────────
+
+export async function sendAgencyCheckoutNotificationEmail(params: CheckoutEmailParams & { notificationEmail: string }): Promise<void> {
+  try {
+    const { data: authData } = await supabase.auth.getSession();
+    if (!authData.session) return;
+
+    const primary = params.agencyPrimaryColor || '#111827';
+    const appUrl = window.location.origin;
+    const movementUrl = `${appUrl}/dashboard/movements`;
+
+    const keyList = params.keyLabels.join(', ');
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="utf-8"><title>Nouvelle sortie de clés</title></head>
+<body style="margin:0;padding:0;background:#F7F7F7;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Helvetica,Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#F7F7F7;padding:32px 16px 48px;">
+<tr><td align="center">
+<table width="520" cellpadding="0" cellspacing="0" style="max-width:520px;width:100%;">
+
+  <tr>
+    <td style="background:#ffffff;border-radius:16px 16px 0 0;padding:0;border-top:4px solid ${primary};overflow:hidden;">
+      <table width="100%" cellpadding="0" cellspacing="0">
+        <tr>
+          <td style="padding:24px 28px 20px;border-bottom:1px solid #F3F4F6;">
+            <table cellpadding="0" cellspacing="0"><tr>
+              <td style="width:40px;height:40px;background:${primary};border-radius:10px;text-align:center;line-height:40px;font-size:20px;">&#128273;</td>
+              <td style="padding-left:12px;vertical-align:middle;">
+                <p style="margin:0;font-size:16px;font-weight:700;color:#111827;">Nouvelle sortie de clés</p>
+                <p style="margin:2px 0 0;font-size:12px;color:#9CA3AF;">${params.agencyName}</p>
+              </td>
+            </tr></table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 28px;background:#FAFAFA;border-bottom:1px solid #F3F4F6;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td style="padding-bottom:12px;vertical-align:top;width:50%;">
+                  <span style="color:#9CA3AF;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:3px;">Prestataire</span>
+                  <span style="color:#111827;font-size:14px;font-weight:600;">${params.contactName}</span>
+                </td>
+                <td style="padding-bottom:12px;vertical-align:top;width:50%;">
+                  <span style="color:#9CA3AF;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:3px;">Référence bien</span>
+                  <span style="color:#111827;font-size:14px;font-weight:600;">${params.propertyReference}</span>
+                </td>
+              </tr>
+              <tr>
+                <td colspan="2" style="padding-bottom:12px;">
+                  <span style="color:#9CA3AF;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:3px;">Adresse</span>
+                  <span style="color:#374151;font-size:13px;">${params.propertyAddress}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding-bottom:12px;vertical-align:top;">
+                  <span style="color:#9CA3AF;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:3px;">Clés remises</span>
+                  <span style="color:#374151;font-size:13px;">${keyList}</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="vertical-align:top;width:50%;">
+                  <span style="color:#9CA3AF;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:3px;">Sortie le</span>
+                  <span style="color:#111827;font-size:13px;font-weight:500;">${fmtShort(params.outAt)}</span>
+                </td>
+                <td style="vertical-align:top;width:50%;">
+                  <span style="color:#9CA3AF;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:3px;">Retour prévu</span>
+                  <span style="color:${primary};font-size:13px;font-weight:700;">${fmtShort(params.expectedReturnAt)}</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:20px 28px 24px;background:#ffffff;border-radius:0 0 16px 16px;text-align:center;">
+            <a href="${movementUrl}" style="display:inline-block;background:${primary};color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;padding:12px 28px;border-radius:10px;">
+              Voir dans le tableau de bord
+            </a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <tr><td style="padding-top:16px;text-align:center;">
+    <p style="margin:0;color:#D1D5DB;font-size:10px;">
+      Notification automatique — <a href="https://keymanager.io" style="color:#D1D5DB;text-decoration:none;">KeyManager.io</a>
+    </p>
+  </td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>`;
+
+    await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${authData.session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          agencyId: params.agencyId,
+          to: params.notificationEmail,
+          toName: params.agencyName,
+          subject: `Sortie de clés — ${params.propertyReference} — ${params.contactName}`,
+          html,
+        }),
+      }
+    );
+  } catch (err) {
+    console.error('sendAgencyCheckoutNotificationEmail error:', err);
+  }
+}
+
+
 
 export interface DelayResponseEmailParams {
   agencyId: string;

@@ -42,6 +42,7 @@ import { QrScanPage } from './pages/QrScanPage';
 import { PropertyQrScanPage } from './pages/PropertyQrScanPage';
 import { QrCodesPrintPage } from './pages/dashboard/QrCodesPrintPage';
 import { DelayRequestPage } from './pages/DelayRequestPage';
+import { DelayApprovePage } from './pages/DelayApprovePage';
 
 function Router() {
   const { user, loading } = useAuth();
@@ -158,6 +159,10 @@ function Router() {
 
   if (currentPath === '/delay-request') {
     return <DelayRequestPage />;
+  }
+
+  if (currentPath === '/delay-approve') {
+    return <DelayApprovePage />;
   }
 
   switch (currentPath) {

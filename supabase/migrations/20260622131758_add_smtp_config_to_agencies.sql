@@ -1,0 +1,6 @@
+ALTER TABLE agencies
+  ADD COLUMN IF NOT EXISTS email_smtp_host TEXT,
+  ADD COLUMN IF NOT EXISTS email_smtp_port INTEGER DEFAULT 587,
+  ADD COLUMN IF NOT EXISTS email_smtp_user TEXT,
+  ADD COLUMN IF NOT EXISTS email_smtp_pass TEXT,
+  ADD COLUMN IF NOT EXISTS email_smtp_secure BOOLEAN DEFAULT false;

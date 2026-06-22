@@ -2,25 +2,59 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { Save, Mail, Info, Eye, EyeOff, Send, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
+import { Save, Mail, Info, Eye, EyeOff, Send, CheckCircle, XCircle, ExternalLink, Server } from 'lucide-react';
 
 interface EmailConfig {
   email_provider: string;
-  email_api_key: string;
   email_from_address: string;
   email_from_name: string;
+  // SMTP
+  email_smtp_host: string;
+  email_smtp_port: number;
+  email_smtp_user: string;
+  email_smtp_pass: string;
+  email_smtp_secure: boolean;
+  // API providers
+  email_api_key: string;
 }
+
+const PROVIDERS = [
+  {
+    id: 'smtp',
+    label: 'SMTP',
+    description: 'Votre propre serveur mail (OVH, Gmail, Outlook, hébergeur…). Aucun compte tiers requis.',
+    icon: Server,
+  },
+  {
+    id: 'resend',
+    label: 'Resend',
+    description: 'API moderne, gratuit jusqu\'à 3 000 emails/mois.',
+    icon: Mail,
+  },
+  {
+    id: 'brevo',
+    label: 'Brevo',
+    description: 'Société française, gère email + SMS, gratuit jusqu\'à 300 emails/jour.',
+    icon: Mail,
+  },
+];
 
 export function EmailConfigPage() {
   const { profile } = useAuth();
   const [config, setConfig] = useState<EmailConfig>({
-    email_provider: 'resend',
-    email_api_key: '',
+    email_provider: 'smtp',
     email_from_address: '',
     email_from_name: '',
+    email_smtp_host: '',
+    email_smtp_port: 587,
+    email_smtp_user: '',
+    email_smtp_pass: '',
+    email_smtp_secure: false,
+    email_api_key: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showPass, setShowPass] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [testStatus, setTestStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [testError, setTestError] = useState('');
@@ -34,16 +68,21 @@ export function EmailConfigPage() {
     try {
       const { data, error } = await supabase
         .from('agencies')
-        .select('email_provider, email_api_key, email_from_address, email_from_name')
+        .select('email_provider, email_from_address, email_from_name, email_api_key, email_smtp_host, email_smtp_port, email_smtp_user, email_smtp_pass, email_smtp_secure')
         .eq('id', profile.agency_id)
         .single();
       if (error) throw error;
       if (data) {
         setConfig({
-          email_provider: data.email_provider || 'resend',
-          email_api_key: data.email_api_key || '',
+          email_provider: data.email_provider || 'smtp',
           email_from_address: data.email_from_address || '',
           email_from_name: data.email_from_name || '',
+          email_api_key: data.email_api_key || '',
+          email_smtp_host: data.email_smtp_host || '',
+          email_smtp_port: data.email_smtp_port || 587,
+          email_smtp_user: data.email_smtp_user || '',
+          email_smtp_pass: data.email_smtp_pass || '',
+          email_smtp_secure: data.email_smtp_secure || false,
         });
       }
     } catch (err) {
@@ -61,13 +100,18 @@ export function EmailConfigPage() {
         .from('agencies')
         .update({
           email_provider: config.email_provider,
-          email_api_key: config.email_api_key,
           email_from_address: config.email_from_address,
           email_from_name: config.email_from_name,
+          email_api_key: config.email_api_key,
+          email_smtp_host: config.email_smtp_host,
+          email_smtp_port: config.email_smtp_port,
+          email_smtp_user: config.email_smtp_user,
+          email_smtp_pass: config.email_smtp_pass,
+          email_smtp_secure: config.email_smtp_secure,
         })
         .eq('id', profile.agency_id);
       if (error) throw error;
-      alert('Configuration email enregistrée avec succès');
+      alert('Configuration enregistrée avec succès');
     } catch (err) {
       console.error('Error saving config:', err);
       alert('Erreur lors de la sauvegarde');
@@ -78,10 +122,6 @@ export function EmailConfigPage() {
 
   async function handleTestEmail() {
     if (!profile?.agency_id || !profile?.email) return;
-    if (!config.email_api_key || !config.email_from_address) {
-      alert('Veuillez d\'abord configurer et sauvegarder la clé API et l\'adresse d\'envoi');
-      return;
-    }
 
     setTestStatus('sending');
     setTestError('');
@@ -102,20 +142,20 @@ export function EmailConfigPage() {
             agencyId: profile.agency_id,
             to: profile.email,
             toName: `${profile.first_name} ${profile.last_name}`,
-            subject: 'Test - Configuration Email KeyManager',
+            subject: 'Test — Configuration Email KeyManager',
             html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px;">
+              <div style="font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 24px;">
                 <div style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 12px; padding: 24px; text-align: center; margin-bottom: 24px;">
-                  <h1 style="color: white; margin: 0; font-size: 24px;">Email de test</h1>
+                  <h1 style="color: white; margin: 0; font-size: 22px;">Email de test</h1>
                   <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0;">Configuration KeyManager</p>
                 </div>
                 <p style="color: #374151;">Bonjour,</p>
-                <p style="color: #374151;">Cet email confirme que votre configuration d'envoi d'emails est bien fonctionnelle.</p>
+                <p style="color: #374151;">Cet email confirme que votre configuration SMTP est bien fonctionnelle.</p>
                 <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                  <p style="color: #166534; margin: 0;"><strong>✅ Configuration valide</strong></p>
-                  <p style="color: #15803d; margin: 8px 0 0; font-size: 14px;">Fournisseur : ${config.email_provider === 'resend' ? 'Resend' : 'Brevo'}</p>
+                  <p style="color: #166534; margin: 0;"><strong>✅ Connexion SMTP valide</strong></p>
+                  <p style="color: #15803d; margin: 8px 0 0; font-size: 14px;">Serveur : ${config.email_smtp_host || config.email_provider}</p>
                 </div>
-                <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">— L'équipe KeyManager</p>
+                <p style="color: #6b7280; font-size: 13px; margin-top: 24px;">— KeyManager.io</p>
               </div>
             `,
           }),
@@ -125,7 +165,7 @@ export function EmailConfigPage() {
       const result = await response.json();
       if (result.success) {
         setTestStatus('success');
-        setTimeout(() => setTestStatus('idle'), 4000);
+        setTimeout(() => setTestStatus('idle'), 5000);
       } else {
         setTestStatus('error');
         setTestError(result.error || 'Erreur inconnue');
@@ -139,176 +179,213 @@ export function EmailConfigPage() {
   if (loading) {
     return (
       <DashboardLayout currentPage="email-config">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-slate-600">Chargement...</div>
-        </div>
+        <div className="flex items-center justify-center h-64 text-slate-600">Chargement...</div>
       </DashboardLayout>
     );
   }
 
-  const providerDocs: Record<string, { label: string; url: string; description: string }> = {
-    resend: {
-      label: 'Resend',
-      url: 'https://resend.com',
-      description: 'API moderne et simple, idéal pour les développeurs. Gratuit jusqu\'à 3 000 emails/mois.',
-    },
-    brevo: {
-      label: 'Brevo (ex-Sendinblue)',
-      url: 'https://brevo.com',
-      description: 'Société française gérant email + SMS en une seule plateforme. Gratuit jusqu\'à 300 emails/jour.',
-    },
-  };
-
-  const currentProvider = providerDocs[config.email_provider];
+  const isSMTP = config.email_provider === 'smtp';
+  const isAPIProvider = config.email_provider === 'resend' || config.email_provider === 'brevo';
 
   return (
     <DashboardLayout currentPage="email-config">
       <div className="max-w-3xl mx-auto px-4 sm:px-0">
+
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Configuration Email</h1>
           <p className="text-slate-600">
-            Paramétrez l'envoi automatique d'emails lors des remises et retours de clés
+            Paramétrez l'envoi automatique d'emails lors des remises de clés
           </p>
         </div>
 
-        {/* How it works */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-          <div className="flex items-start space-x-3">
+          <div className="flex items-start gap-3">
             <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div className="text-sm text-blue-900">
               <p className="font-semibold mb-1">Quand l'email est-il envoyé ?</p>
-              <p>Dès que les <strong>deux signatures sont complètes</strong> (agence + prestataire) et la photo prise, un email de confirmation est automatiquement envoyé au prestataire avec :</p>
-              <ul className="mt-2 space-y-1 list-disc list-inside text-blue-800">
-                <li>La liste des clés remises</li>
-                <li>L'adresse du bien avec lien GPS (Google Maps)</li>
-                <li>La date et heure de sortie</li>
-                <li>La date de retour prévue</li>
-                <li>Les signatures (agence + prestataire)</li>
-              </ul>
+              <p>Après les deux signatures (agence + prestataire) et la photo, un email de confirmation part automatiquement au prestataire avec les clés remises, l'adresse du bien, le lien GPS et les dates.</p>
             </div>
           </div>
         </div>
 
-        {/* Provider selection */}
+        {/* Provider tabs */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-            <Mail className="w-5 h-5 text-amber-600" />
-            Fournisseur d'envoi
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-            {Object.entries(providerDocs).map(([key, doc]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setConfig({ ...config, email_provider: key })}
-                className={`text-left p-4 rounded-xl border-2 transition-all ${
-                  config.email_provider === key
-                    ? 'border-primary bg-primary/5'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-semibold text-slate-900">{doc.label}</span>
-                  {config.email_provider === key && (
-                    <CheckCircle className="w-4 h-4 text-primary" />
-                  )}
-                </div>
-                <p className="text-xs text-slate-500">{doc.description}</p>
-              </button>
-            ))}
-          </div>
-
-          {currentProvider && (
-            <a
-              href={currentProvider.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 transition"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              Créer un compte {currentProvider.label}
-            </a>
-          )}
-        </div>
-
-        {/* API credentials */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Paramètres d'envoi</h2>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Clé API *
-              </label>
-              <div className="relative">
-                <input
-                  type={showApiKey ? 'text' : 'password'}
-                  value={config.email_api_key}
-                  onChange={(e) => setConfig({ ...config, email_api_key: e.target.value })}
-                  placeholder={config.email_provider === 'resend' ? 're_xxxxxxxxxxxx' : 'xkeysib-xxxxxxxxxxxx'}
-                  className="w-full px-4 py-2 pr-10 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
-                />
+          <h2 className="text-base font-semibold text-slate-900 mb-4">Mode d'envoi</h2>
+          <div className="grid grid-cols-3 gap-2 mb-6">
+            {PROVIDERS.map(p => {
+              const Icon = p.icon;
+              const active = config.email_provider === p.id;
+              return (
                 <button
+                  key={p.id}
                   type="button"
-                  onClick={() => setShowApiKey(!showApiKey)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  onClick={() => setConfig({ ...config, email_provider: p.id })}
+                  className={`flex flex-col items-start p-3 rounded-xl border-2 transition-all text-left ${
+                    active ? 'border-primary bg-primary/5' : 'border-slate-200 hover:border-slate-300'
+                  }`}
                 >
-                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <div className="flex items-center justify-between w-full mb-1">
+                    <span className={`text-sm font-semibold ${active ? 'text-primary' : 'text-slate-700'}`}>{p.label}</span>
+                    {active && <CheckCircle className="w-3.5 h-3.5 text-primary" />}
+                  </div>
+                  <p className="text-xs text-slate-500 leading-snug">{p.description}</p>
                 </button>
-              </div>
-              <p className="text-xs text-slate-500 mt-1">
-                {config.email_provider === 'resend'
-                  ? 'Trouvez votre clé API dans Dashboard → API Keys sur resend.com'
-                  : 'Trouvez votre clé API dans Mon compte → SMTP & API sur brevo.com'
-                }
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Adresse d'envoi (From) *
-              </label>
-              <input
-                type="email"
-                value={config.email_from_address}
-                onChange={(e) => setConfig({ ...config, email_from_address: e.target.value })}
-                placeholder="notifications@votre-agence.fr"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <p className="text-xs text-slate-500 mt-1">
-                Doit être un domaine vérifié dans votre compte {currentProvider?.label}
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Nom d'envoi (From Name)
-              </label>
-              <input
-                type="text"
-                value={config.email_from_name}
-                onChange={(e) => setConfig({ ...config, email_from_name: e.target.value })}
-                placeholder="Agence Dupont Immobilier"
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
+              );
+            })}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-4 border-t border-slate-200">
+          {/* Common fields */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Adresse d'expéditeur *</label>
+                <input
+                  type="email"
+                  value={config.email_from_address}
+                  onChange={e => setConfig({ ...config, email_from_address: e.target.value })}
+                  placeholder="notifications@votre-agence.fr"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nom d'expéditeur</label>
+                <input
+                  type="text"
+                  value={config.email_from_name}
+                  onChange={e => setConfig({ ...config, email_from_name: e.target.value })}
+                  placeholder="Agence Dupont Immobilier"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                />
+              </div>
+            </div>
+
+            {/* SMTP specific fields */}
+            {isSMTP && (
+              <div className="space-y-4 pt-2 border-t border-slate-100">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Server className="w-4 h-4 text-slate-500" />
+                  Paramètres SMTP
+                </h3>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Serveur SMTP (host) *</label>
+                    <input
+                      type="text"
+                      value={config.email_smtp_host}
+                      onChange={e => setConfig({ ...config, email_smtp_host: e.target.value })}
+                      placeholder="ssl0.ovh.net"
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Port *</label>
+                    <input
+                      type="number"
+                      value={config.email_smtp_port}
+                      onChange={e => setConfig({ ...config, email_smtp_port: parseInt(e.target.value) || 587 })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Identifiant (email ou login) *</label>
+                  <input
+                    type="text"
+                    value={config.email_smtp_user}
+                    onChange={e => setConfig({ ...config, email_smtp_user: e.target.value })}
+                    placeholder="votre.email@domaine.fr"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Mot de passe *</label>
+                  <div className="relative">
+                    <input
+                      type={showPass ? 'text' : 'password'}
+                      value={config.email_smtp_pass}
+                      onChange={e => setConfig({ ...config, email_smtp_pass: e.target.value })}
+                      placeholder="••••••••••••"
+                      className="w-full px-3 py-2 pr-10 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                  <input
+                    id="smtp_secure"
+                    type="checkbox"
+                    checked={config.email_smtp_secure}
+                    onChange={e => setConfig({ ...config, email_smtp_secure: e.target.checked })}
+                    className="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary"
+                  />
+                  <label htmlFor="smtp_secure" className="text-sm text-slate-700">
+                    <span className="font-medium">SSL/TLS direct</span>
+                    <span className="text-slate-500 ml-1">(port 465) — décoché = STARTTLS (port 587)</span>
+                  </label>
+                </div>
+
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 space-y-1">
+                  <p className="font-semibold">Paramètres OVH courants :</p>
+                  <p>Host : <code className="bg-amber-100 px-1 rounded">ssl0.ovh.net</code> — Port SSL : <code className="bg-amber-100 px-1 rounded">465</code> (cocher SSL) ou Port STARTTLS : <code className="bg-amber-100 px-1 rounded">587</code></p>
+                  <p>Host : <code className="bg-amber-100 px-1 rounded">pro1.mail.ovh.net</code> pour les offres Pro</p>
+                </div>
+              </div>
+            )}
+
+            {/* API key field for Resend/Brevo */}
+            {isAPIProvider && (
+              <div className="pt-2 border-t border-slate-100">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Clé API *</label>
+                <div className="relative">
+                  <input
+                    type={showApiKey ? 'text' : 'password'}
+                    value={config.email_api_key}
+                    onChange={e => setConfig({ ...config, email_api_key: e.target.value })}
+                    placeholder={config.email_provider === 'resend' ? 're_xxxxxxxxxxxx' : 'xkeysib-xxxxxxxxxxxx'}
+                    className="w-full px-3 py-2 pr-10 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-sm font-mono"
+                  />
+                  <button type="button" onClick={() => setShowApiKey(!showApiKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <a
+                  href={config.email_provider === 'resend' ? 'https://resend.com/api-keys' : 'https://app.brevo.com/settings/keys/api'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 mt-1"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Obtenir ma clé API {config.email_provider === 'resend' ? 'Resend' : 'Brevo'}
+                </a>
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex flex-col sm:flex-row gap-3 mt-6 pt-5 border-t border-slate-200">
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center justify-center space-x-2 bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-secondary transition disabled:opacity-50"
+              className="flex items-center justify-center gap-2 bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-secondary transition disabled:opacity-50 text-sm font-medium"
             >
               <Save className="w-4 h-4" />
-              <span>{saving ? 'Enregistrement...' : 'Enregistrer'}</span>
+              {saving ? 'Enregistrement...' : 'Enregistrer'}
             </button>
 
             <button
               onClick={handleTestEmail}
-              disabled={testStatus === 'sending' || !config.email_api_key}
-              className={`flex items-center justify-center space-x-2 px-5 py-2.5 rounded-lg border transition disabled:opacity-50 ${
+              disabled={testStatus === 'sending'}
+              className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border transition text-sm font-medium disabled:opacity-50 ${
                 testStatus === 'success'
                   ? 'border-green-300 bg-green-50 text-green-700'
                   : testStatus === 'error'
@@ -317,51 +394,25 @@ export function EmailConfigPage() {
               }`}
             >
               {testStatus === 'sending' ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
-                  <span>Envoi en cours...</span>
-                </>
+                <><div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" /><span>Envoi en cours...</span></>
               ) : testStatus === 'success' ? (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Email envoyé !</span>
-                </>
+                <><CheckCircle className="w-4 h-4" /><span>Email envoyé !</span></>
               ) : testStatus === 'error' ? (
-                <>
-                  <XCircle className="w-4 h-4" />
-                  <span>Échec</span>
-                </>
+                <><XCircle className="w-4 h-4" /><span>Échec</span></>
               ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  <span>Envoyer un email de test</span>
-                </>
+                <><Send className="w-4 h-4" /><span>Envoyer un email de test</span></>
               )}
             </button>
           </div>
 
           {testStatus === 'error' && testError && (
-            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-700">{testError}</p>
-            </div>
+            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">{testError}</div>
           )}
-
           {testStatus === 'success' && (
-            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm text-green-700">
-                Email de test envoyé à <strong>{profile?.email}</strong>. Vérifiez votre boîte de réception.
-              </p>
+            <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+              Email de test envoyé à <strong>{profile?.email}</strong>. Vérifiez votre boîte de réception (et les spams).
             </div>
           )}
-        </div>
-
-        {/* Info box */}
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-          <h3 className="font-semibold text-amber-900 mb-3">Astuce : Brevo pour email + SMS</h3>
-          <p className="text-sm text-amber-800">
-            Si vous utilisez Brevo, vous pouvez configurer à la fois l'envoi d'emails et de SMS via la même plateforme,
-            avec une seule clé API. C'est la solution la plus simple pour centraliser vos notifications.
-          </p>
         </div>
       </div>
     </DashboardLayout>

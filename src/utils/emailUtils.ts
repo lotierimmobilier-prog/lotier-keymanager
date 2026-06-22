@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 interface CheckoutEmailParams {
   agencyId: string;
   agencyName: string;
+  logoUrl?: string;
   contactEmail: string;
   contactName: string;
   keyLabels: string[];
@@ -10,8 +11,6 @@ interface CheckoutEmailParams {
   propertyAddress: string;
   outAt: string;
   expectedReturnAt: string;
-  agencySignature?: string;
-  providerSignature?: string;
 }
 
 export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise<{ success: boolean; error?: string }> {
@@ -34,23 +33,15 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
       .map(label => `<li style="padding: 4px 0; color: #374151;">🔑 ${label}</li>`)
       .join('');
 
-    const signaturesHtml = (params.agencySignature || params.providerSignature) ? `
-      <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e5e7eb;">
-        <h3 style="color: #374151; font-size: 16px; margin: 0 0 16px;">Signatures</h3>
-        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
-          ${params.agencySignature ? `
-          <div style="flex: 1; min-width: 200px;">
-            <p style="color: #6b7280; font-size: 12px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">Signature agence</p>
-            <img src="${params.agencySignature}" alt="Signature agence" style="border: 1px solid #d1d5db; border-radius: 8px; max-width: 200px; width: 100%;" />
-          </div>` : ''}
-          ${params.providerSignature ? `
-          <div style="flex: 1; min-width: 200px;">
-            <p style="color: #6b7280; font-size: 12px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.05em;">Signature prestataire</p>
-            <img src="${params.providerSignature}" alt="Signature prestataire" style="border: 1px solid #d1d5db; border-radius: 8px; max-width: 200px; width: 100%;" />
-          </div>` : ''}
-        </div>
-      </div>
-    ` : '';
+    const logoBlock = params.logoUrl
+      ? `<img src="${params.logoUrl}" alt="${params.agencyName}" style="max-height: 60px; max-width: 200px; object-fit: contain; margin: 0 auto 16px; display: block;" />`
+      : `<div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/>
+            <path d="m21 2-9.6 9.6"/>
+            <circle cx="7.5" cy="15.5" r="5.5"/>
+          </svg>
+        </div>`;
 
     const html = `
 <!DOCTYPE html>
@@ -60,13 +51,7 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
   <div style="max-width: 600px; margin: 0 auto; padding: 24px;">
 
     <div style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 16px; padding: 32px 24px; text-align: center; margin-bottom: 24px;">
-      <div style="width: 56px; height: 56px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4"/>
-          <path d="m21 2-9.6 9.6"/>
-          <circle cx="7.5" cy="15.5" r="5.5"/>
-        </svg>
-      </div>
+      ${logoBlock}
       <h1 style="color: white; margin: 0; font-size: 22px; font-weight: 700;">Confirmation de remise de clés</h1>
       <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 15px;">${params.agencyName}</p>
     </div>
@@ -110,8 +95,6 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
         </svg>
         Voir sur Google Maps
       </a>
-
-      ${signaturesHtml}
     </div>
 
     <div style="background: #fef3c7; border: 1px solid #fde68a; border-radius: 10px; padding: 14px; margin-bottom: 16px;">

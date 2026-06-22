@@ -312,7 +312,7 @@ export function MovementsPage() {
 
         const { data: agencyForEmail } = await supabase
           .from('agencies')
-          .select('name')
+          .select('name, logo_url')
           .eq('id', profile.agency_id)
           .single();
 
@@ -322,6 +322,7 @@ export function MovementsPage() {
           sendKeyCheckoutEmail({
             agencyId: profile.agency_id,
             agencyName: agencyForEmail.name,
+            logoUrl: (agencyForEmail as any).logo_url || undefined,
             contactEmail: formData.contact_email,
             contactName: formData.given_to_name,
             keyLabels: keysForEmail.map((k: any) => k.label),
@@ -329,8 +330,6 @@ export function MovementsPage() {
             propertyAddress: prop?.address || '',
             outAt: now,
             expectedReturnAt: expectedReturnDate,
-            agencySignature: formData.agency_signature_out || undefined,
-            providerSignature: formData.provider_signature_out || undefined,
           }).catch(err => console.error('Email error:', err));
         }
       }

@@ -282,7 +282,7 @@ export function KeysCirculationTab() {
 
         const { data: agencyForEmail } = await supabase
           .from('agencies')
-          .select('name')
+          .select('name, logo_url')
           .eq('id', profile.agency_id)
           .single();
 
@@ -292,6 +292,7 @@ export function KeysCirculationTab() {
           sendKeyCheckoutEmail({
             agencyId: profile.agency_id,
             agencyName: agencyForEmail.name,
+            logoUrl: (agencyForEmail as any).logo_url || undefined,
             contactEmail: formData.contact_email,
             contactName: formData.given_to_name,
             keyLabels: keysForEmail.map((k: any) => k.label),
@@ -299,8 +300,6 @@ export function KeysCirculationTab() {
             propertyAddress: prop?.address || '',
             outAt: now,
             expectedReturnAt: expectedReturnDate,
-            agencySignature: formData.agency_signature_out || undefined,
-            providerSignature: formData.provider_signature_out || undefined,
           }).catch(err => console.error('Email error:', err));
         }
       }
@@ -600,13 +599,14 @@ export function KeysCirculationTab() {
     try {
       const { data: agencyData } = await supabase
         .from('agencies')
-        .select('name')
+        .select('name, logo_url')
         .eq('id', profile.agency_id)
         .single();
 
       const result = await sendKeyCheckoutEmail({
         agencyId: profile.agency_id,
         agencyName: agencyData?.name || 'Agence',
+        logoUrl: (agencyData as any)?.logo_url || undefined,
         contactEmail: emailTo,
         contactName: movement.given_to_name,
         keyLabels: [movement.key?.label || 'Clé'],
@@ -614,8 +614,6 @@ export function KeysCirculationTab() {
         propertyAddress: movement.property?.address || '',
         outAt: movement.out_at,
         expectedReturnAt: movement.expected_return_at,
-        agencySignature: movement.agency_signature_out || undefined,
-        providerSignature: movement.provider_signature_out || undefined,
       });
 
       if (result.success) {

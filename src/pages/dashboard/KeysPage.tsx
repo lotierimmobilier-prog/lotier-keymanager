@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { Plus, Edit, Trash2, Key, AlertCircle, Camera, Upload, QrCode } from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Key, AlertCircle, Camera, Upload, QrCode } from 'lucide-react';
 import { isUnlimited, formatKeyLimit } from '../../utils/constants';
 import { QrCodeGenerator } from '../../components/QrCodeGenerator';
 
@@ -24,6 +24,11 @@ interface KeyItem {
   property?: {
     reference: string;
     address: string;
+    postal_code: string | null;
+    city: string | null;
+    building: string | null;
+    floor: string | null;
+    door: string | null;
   };
   created_at: string;
 }
@@ -32,6 +37,11 @@ interface Property {
   id: string;
   reference: string;
   address: string;
+  postal_code: string | null;
+  city: string | null;
+  building: string | null;
+  floor: string | null;
+  door: string | null;
 }
 
 export function KeysPage() {
@@ -79,14 +89,19 @@ export function KeysPage() {
             *,
             properties:property_id (
               reference,
-              address
+              address,
+              postal_code,
+              city,
+              building,
+              floor,
+              door
             )
           `)
           .eq('agency_id', profile.agency_id)
           .order('created_at', { ascending: false }),
         supabase
           .from('properties')
-          .select('id, reference, address')
+          .select('id, reference, address, postal_code, city, building, floor, door')
           .eq('agency_id', profile.agency_id),
         supabase
           .from('agencies')
@@ -384,8 +399,26 @@ export function KeysPage() {
                     <td className="px-6 py-4 text-sm text-slate-600">
                       {key.property ? (
                         <div>
-                          <div className="font-medium">{key.property.reference}</div>
-                          <div className="text-xs text-slate-500">{key.property.address}</div>
+                          <div className="font-medium text-slate-900">{key.property.reference}</div>
+                          <div className="text-xs text-slate-500 mt-0.5">{key.property.address}</div>
+                          {(key.property.postal_code || key.property.city) && (
+                            <div className="text-xs text-slate-400">
+                              {[key.property.postal_code, key.property.city].filter(Boolean).join(' ')}
+                            </div>
+                          )}
+                          {(key.property.building || key.property.floor || key.property.door) && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {key.property.building && (
+                                <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">Bât. {key.property.building}</span>
+                              )}
+                              {key.property.floor && (
+                                <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">Ét. {key.property.floor}</span>
+                              )}
+                              {key.property.door && (
+                                <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">Porte {key.property.door}</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         '-'
@@ -486,6 +519,22 @@ export function KeysPage() {
                         <p className="text-xs font-medium text-blue-900 mb-1">Référence du bien</p>
                         <p className="text-lg font-bold text-blue-700">{selectedProperty.reference}</p>
                         <p className="text-xs text-blue-600 mt-1">{selectedProperty.address}</p>
+                        {(selectedProperty.postal_code || selectedProperty.city) && (
+                          <p className="text-xs text-blue-500">{[selectedProperty.postal_code, selectedProperty.city].filter(Boolean).join(' ')}</p>
+                        )}
+                        {(selectedProperty.building || selectedProperty.floor || selectedProperty.door) && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {selectedProperty.building && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Bât. {selectedProperty.building}</span>
+                            )}
+                            {selectedProperty.floor && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Étage {selectedProperty.floor}</span>
+                            )}
+                            {selectedProperty.door && (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Porte {selectedProperty.door}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     ) : null;
                   })()}

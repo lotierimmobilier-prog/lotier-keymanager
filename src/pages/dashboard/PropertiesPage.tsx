@@ -4,7 +4,7 @@ import { useModal } from '../../contexts/ModalContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
 import { CSVImporter } from '../../components/CSVImporter';
-import { Plus, Edit, Trash2, Building, Upload, Camera, Minus, QrCode, FileEdit, Search } from 'lucide-react';
+import { Plus, CreditCard as Edit, Trash2, Building, Upload, Camera, Minus, QrCode, File as FileEdit, Search } from 'lucide-react';
 
 interface Property {
   id: string;
@@ -566,8 +566,7 @@ export function PropertiesPage() {
                   <tr>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">Référence</th>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">Propriétaire</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">Adresse</th>
-                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">Ville</th>
+                    <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">Localisation</th>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">Type</th>
                     <th className="text-left px-6 py-4 text-sm font-semibold text-slate-900">Saisi par</th>
                     <th className="text-right px-6 py-4 text-sm font-semibold text-slate-900">Actions</th>
@@ -580,8 +579,33 @@ export function PropertiesPage() {
                       <td className="px-6 py-4 text-sm text-slate-600">
                         {property.owner_first_name && `${property.owner_first_name} `}{property.owner_name}
                       </td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{property.address}</td>
-                      <td className="px-6 py-4 text-sm text-slate-600">{property.city || '-'}</td>
+                      <td className="px-6 py-4 text-sm text-slate-600">
+                        <div className="font-medium text-slate-900">{property.address}</div>
+                        {(property.postal_code || property.city) && (
+                          <div className="text-xs text-slate-500 mt-0.5">
+                            {[property.postal_code, property.city].filter(Boolean).join(' ')}
+                          </div>
+                        )}
+                        {(property.building || property.floor || property.door) && (
+                          <div className="flex flex-wrap gap-x-3 mt-1">
+                            {property.building && (
+                              <span className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                                Bât. {property.building}
+                              </span>
+                            )}
+                            {property.floor && (
+                              <span className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                                Étage {property.floor}
+                              </span>
+                            )}
+                            {property.door && (
+                              <span className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                                Porte {property.door}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
                       <td className="px-6 py-4 text-sm text-slate-600">{property.type}</td>
                       <td className="px-6 py-4 text-sm text-slate-600">
                         {property.creator ? `${property.creator.first_name} ${property.creator.last_name}` : '-'}
@@ -668,14 +692,24 @@ export function PropertiesPage() {
                   <div className="space-y-2 text-sm">
                     <div>
                       <span className="text-slate-500">Adresse:</span>
-                      <p className="text-slate-900">{property.address}</p>
+                      <p className="text-slate-900 font-medium">{property.address}</p>
+                      {(property.postal_code || property.city) && (
+                        <p className="text-slate-500 text-xs">{[property.postal_code, property.city].filter(Boolean).join(' ')}</p>
+                      )}
+                      {(property.building || property.floor || property.door) && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {property.building && (
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Bât. {property.building}</span>
+                          )}
+                          {property.floor && (
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Étage {property.floor}</span>
+                          )}
+                          {property.door && (
+                            <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">Porte {property.door}</span>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {property.city && (
-                      <div>
-                        <span className="text-slate-500">Ville:</span>
-                        <p className="text-slate-900">{property.city}</p>
-                      </div>
-                    )}
                     <div className="flex justify-between">
                       <div>
                         <span className="text-slate-500">Type:</span>

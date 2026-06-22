@@ -330,6 +330,7 @@ export function MovementsPage() {
             propertyAddress: prop?.address || '',
             outAt: now,
             expectedReturnAt: expectedReturnDate,
+            movementId: newMovements[0].id,
           }).catch(err => console.error('Email error:', err));
         }
       }

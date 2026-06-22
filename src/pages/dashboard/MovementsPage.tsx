@@ -307,12 +307,12 @@ export function MovementsPage() {
       if (formData.contact_email && newMovements && newMovements.length > 0) {
         const { data: keysForEmail } = await supabase
           .from('keys')
-          .select('id, label, properties(reference, address)')
+          .select('id, label, properties(reference, address, photo_url)')
           .in('id', keysToCheckout);
 
         const { data: agencyForEmail } = await supabase
           .from('agencies')
-          .select('name, address, logo_url, primary_color, secondary_color')
+          .select('name, address, logo_url, primary_color, secondary_color, email_from_address')
           .eq('id', profile.agency_id)
           .single();
 
@@ -327,11 +327,13 @@ export function MovementsPage() {
             agencyLogoUrl: ag.logo_url || undefined,
             agencyPrimaryColor: ag.primary_color || undefined,
             agencySecondaryColor: ag.secondary_color || undefined,
+            agencyEmail: ag.email_from_address || undefined,
             contactEmail: formData.contact_email,
             contactName: formData.given_to_name,
             keyLabels: keysForEmail.map((k: any) => k.label),
             propertyReference: prop?.reference || '',
             propertyAddress: prop?.address || '',
+            propertyPhotoUrl: prop?.photo_url || undefined,
             outAt: now,
             expectedReturnAt: expectedReturnDate,
             movementId: newMovements[0].id,

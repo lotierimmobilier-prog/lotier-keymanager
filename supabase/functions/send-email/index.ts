@@ -157,6 +157,12 @@ function smtpOk(resp: string, ...codes: number[]): boolean {
   return codes.includes(code);
 }
 
+// Base64-encode a string for use as email body part (RFC 2045: max 76 chars/line)
+function toBase64Lines(str: string): string {
+  const b64 = btoa(unescape(encodeURIComponent(str)));
+  return b64.match(/.{1,76}/g)?.join("\r\n") ?? b64;
+}
+
 async function sendViaSmtp(opts: {
   host: string; port: number; tls: boolean;
   user: string; pass: string;
@@ -207,10 +213,13 @@ async function sendViaSmtp(opts: {
 
     const boundary = `bound_${Date.now()}`;
     const plainText = opts.html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+
+    // Use base64 encoding for both parts to avoid QP misinterpretation of
+    // special chars (= in URLs, accented chars, long lines, etc.)
     const emailBody = [
-      `From: ${opts.fromName} <${opts.from}>`,
+      `From: =?UTF-8?B?${btoa(unescape(encodeURIComponent(opts.fromName)))}?= <${opts.from}>`,
       `To: ${opts.toName} <${opts.to}>`,
-      `Subject: ${opts.subject}`,
+      `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(opts.subject)))}?=`,
       `Message-ID: <${Date.now()}@keymanager>`,
       `Date: ${new Date().toUTCString()}`,
       `MIME-Version: 1.0`,
@@ -218,15 +227,15 @@ async function sendViaSmtp(opts: {
       "",
       `--${boundary}`,
       `Content-Type: text/plain; charset=utf-8`,
-      `Content-Transfer-Encoding: quoted-printable`,
+      `Content-Transfer-Encoding: base64`,
       "",
-      plainText,
+      toBase64Lines(plainText),
       "",
       `--${boundary}`,
       `Content-Type: text/html; charset=utf-8`,
-      `Content-Transfer-Encoding: quoted-printable`,
+      `Content-Transfer-Encoding: base64`,
       "",
-      opts.html,
+      toBase64Lines(opts.html),
       "",
       `--${boundary}--`,
       ".",

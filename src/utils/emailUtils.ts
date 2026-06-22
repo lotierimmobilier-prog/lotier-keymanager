@@ -76,6 +76,10 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
       ? `https://api.qrserver.com/v1/create-qr-code/?size=140x140&color=111827&bgcolor=FFFFFF&data=${encodeURIComponent(delayUrl)}`
       : null;
 
+    const encodedAddress = encodeURIComponent(params.propertyAddress);
+    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+    const wazeUrl = `https://waze.com/ul?q=${encodedAddress}&navigate=yes`;
+
     // Logo: agency logo or fallback to LOTIER logo in storage
     let logoSrc: string | null = params.agencyLogoUrl || null;
     if (!logoSrc) {
@@ -234,6 +238,16 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
               <td>
                 <span style="color:#9CA3AF;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:2px;">Adresse</span>
                 <span style="color:#111827;font-size:14px;font-weight:500;">${params.propertyAddress}</span>
+                <div style="margin-top:6px;">
+                  <a href="${mapsUrl}" target="_blank"
+                     style="display:inline-block;margin-right:8px;background:#E8F0FE;color:#1967D2;text-decoration:none;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;">
+                    &#127757;&nbsp; Google Maps
+                  </a>
+                  <a href="${wazeUrl}" target="_blank"
+                     style="display:inline-block;background:#E8FAF0;color:#0F7B3C;text-decoration:none;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;">
+                    &#128663;&nbsp; Waze
+                  </a>
+                </div>
               </td>
             </tr></table>
           </td>
@@ -348,25 +362,13 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
   <tr>
     <td style="background:#ffffff;padding:0 24px 32px;">
 
-      <!-- Primary: Demander un délai -->
-      <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px;">
+      <!-- Demander un délai -->
+      <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td style="border-radius:12px;overflow:hidden;text-align:center;background:#111827;">
             <a href="${delayUrl}" target="_blank"
                style="display:block;padding:16px 24px;color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;letter-spacing:-0.01em;">
               &#9200;&nbsp; Demander un délai
-            </a>
-          </td>
-        </tr>
-      </table>
-
-      <!-- Secondary: Voir mon dossier -->
-      <table width="100%" cellpadding="0" cellspacing="0">
-        <tr>
-          <td style="border-radius:12px;overflow:hidden;text-align:center;border:1.5px solid #E5E7EB;">
-            <a href="${delayUrl}" target="_blank"
-               style="display:block;padding:14px 24px;color:#374151;text-decoration:none;font-size:14px;font-weight:600;">
-              &#128196;&nbsp; Voir mon dossier
             </a>
           </td>
         </tr>
@@ -386,7 +388,7 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
         <tr>
           <td style="padding:20px;text-align:center;">
             <p style="margin:0 0 12px;color:#9CA3AF;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;">
-              Scannez pour accéder à votre dossier
+              Scannez pour demander un délai
             </p>
             <img src="${qrUrl}" alt="QR Code dossier" width="140" height="140"
                  style="display:block;margin:0 auto;border-radius:8px;" />

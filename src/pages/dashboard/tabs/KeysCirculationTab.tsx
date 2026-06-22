@@ -28,6 +28,8 @@ interface Movement {
   provider_signature_in: string | null;
   provider_signature_in_at: string | null;
   photo_in_url: string | null;
+  delay_requested_at: string | null;
+  delay_request_message: string | null;
   recorded_by?: string;
   recorder?: {
     first_name: string;
@@ -300,6 +302,7 @@ export function KeysCirculationTab() {
             propertyAddress: prop?.address || '',
             outAt: now,
             expectedReturnAt: expectedReturnDate,
+            movementId: newMovements[0].id,
           }).catch(err => console.error('Email error:', err));
         }
       }
@@ -614,6 +617,7 @@ export function KeysCirculationTab() {
         propertyAddress: movement.property?.address || '',
         outAt: movement.out_at,
         expectedReturnAt: movement.expected_return_at,
+        movementId: movement.id,
       });
 
       if (result.success) {
@@ -750,6 +754,15 @@ export function KeysCirculationTab() {
                       }`}>
                         {statusColor === 'red' ? 'En retard' : statusColor === 'orange' ? 'Retour imminent' : 'En cours'}
                       </span>
+                      {firstMovement.delay_requested_at && (
+                        <span
+                          className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 ml-2"
+                          title={firstMovement.delay_request_message || 'Délai demandé'}
+                        >
+                          <Clock className="w-3 h-3" />
+                          Délai demandé
+                        </span>
+                      )}
                     </div>
                     <button
                       onClick={() => movementsInGroup.forEach(m => handleCheckin(m.id))}

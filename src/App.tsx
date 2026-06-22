@@ -41,6 +41,7 @@ import MenuOrderPage from './pages/dashboard/MenuOrderPage';
 import { QrScanPage } from './pages/QrScanPage';
 import { PropertyQrScanPage } from './pages/PropertyQrScanPage';
 import { QrCodesPrintPage } from './pages/dashboard/QrCodesPrintPage';
+import { DelayRequestPage } from './pages/DelayRequestPage';
 
 function Router() {
   const { user, loading } = useAuth();
@@ -153,6 +154,10 @@ function Router() {
 
   if (currentPath.startsWith('/property-qr/')) {
     return <PropertyQrScanPage />;
+  }
+
+  if (currentPath === '/delay-request') {
+    return <DelayRequestPage />;
   }
 
   switch (currentPath) {

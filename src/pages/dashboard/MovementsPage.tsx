@@ -1079,19 +1079,6 @@ export function MovementsPage() {
                   <div className="space-y-2">
                     <div className="flex items-center">
                       <input
-                        id="responsibility_transferred"
-                        type="checkbox"
-                        checked={formData.responsibility_transferred}
-                        onChange={(e) => setFormData({ ...formData, responsibility_transferred: e.target.checked })}
-                        className="w-4 h-4 text-amber-700 border-slate-300 rounded focus:ring-primary"
-                      />
-                      <label htmlFor="responsibility_transferred" className="ml-2 text-sm text-slate-700">
-                        Transfert de responsabilité
-                      </label>
-                    </div>
-
-                    <div className="flex items-center">
-                      <input
                         id="disable_sms"
                         type="checkbox"
                         checked={formData.disable_sms}

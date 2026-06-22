@@ -17,7 +17,21 @@ interface CheckoutEmailParams {
 const GOLD = '#B8924A';
 const GOLD_LIGHT = '#D4AF72';
 const DARK = '#111827';
-const SLATE = '#374151';
+
+async function fetchBase64(url: string): Promise<string> {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return url;
+  }
+}
 
 export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise<{ success: boolean; error?: string }> {
   try {
@@ -25,8 +39,12 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
     if (!authData.session) return { success: false, error: 'Non authentifié' };
 
     const appUrl = window.location.origin;
-    const logoUrl = `${appUrl}/images/logo_rond.jpg`;
-    const footerBanner = `${appUrl}/images/header_copie.png`;
+
+    // Embed images as base64 so they always display in every email client
+    const [logoData, footerData] = await Promise.all([
+      fetchBase64(`${appUrl}/images/logo_rond.jpg`),
+      fetchBase64(`${appUrl}/images/header_copie.png`),
+    ]);
 
     const fmt = (iso: string) => new Date(iso).toLocaleString('fr-FR', {
       day: '2-digit', month: 'long', year: 'numeric',
@@ -37,71 +55,89 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
       hour: '2-digit', minute: '2-digit',
     });
 
-    const outDate   = fmt(params.outAt);
-    const retDate   = fmt(params.expectedReturnAt);
-    const retShort  = fmtShort(params.expectedReturnAt);
+    const outDate  = fmt(params.outAt);
+    const retDate  = fmt(params.expectedReturnAt);
+    const retShort = fmtShort(params.expectedReturnAt);
 
     const keyRows = params.keyLabels.map(label => `
       <tr>
         <td style="padding:10px 16px;border-bottom:1px solid #f0ead8;">
           <table cellpadding="0" cellspacing="0"><tr>
-            <td style="width:28px;height:28px;background:${GOLD};border-radius:50%;text-align:center;vertical-align:middle;font-size:14px;">
+            <td style="width:28px;height:28px;background:${GOLD};border-radius:50%;text-align:center;vertical-align:middle;font-size:13px;color:#fff;font-weight:700;">
               &#128273;
             </td>
-            <td style="padding-left:12px;color:${DARK};font-size:14px;font-weight:500;">${label}</td>
+            <td style="padding-left:12px;color:${DARK};font-size:14px;font-weight:500;vertical-align:middle;">${label}</td>
           </tr></table>
         </td>
       </tr>`).join('');
 
     const delayBtn = params.movementId ? `
       <tr>
-        <td style="padding:0 32px 36px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
+        <td style="padding:8px 32px 36px;">
+
+          <!-- Separator -->
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px;">
             <tr>
-              <td style="padding:20px 0 12px;text-align:center;">
-                <div style="display:inline-block;width:40px;height:1px;background:#d4af72;vertical-align:middle;"></div>
-                <span style="color:#9a8a6a;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;vertical-align:middle;padding:0 12px;">Vous avez besoin de plus de temps ?</span>
-                <div style="display:inline-block;width:40px;height:1px;background:#d4af72;vertical-align:middle;"></div>
-              </td>
-            </tr>
-            <tr>
-              <td align="center">
-                <a href="${appUrl}/delay-request?id=${params.movementId}" target="_blank"
-                   style="display:block;text-decoration:none;max-width:460px;margin:0 auto;">
-                  <table width="100%" cellpadding="0" cellspacing="0"
-                         style="background:linear-gradient(135deg,#1a1a1a 0%,#2d2010 100%);border-radius:14px;overflow:hidden;border:2px solid ${GOLD};">
-                    <tr>
-                      <td style="padding:4px 0;background:${GOLD};text-align:center;">
-                        <span style="color:#fff;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:0.15em;">Action requise si nécessaire</span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td style="padding:20px 28px;">
-                        <table width="100%" cellpadding="0" cellspacing="0"><tr>
-                          <td style="width:52px;vertical-align:middle;">
-                            <div style="width:52px;height:52px;background:rgba(184,146,74,0.15);border:2px solid ${GOLD};border-radius:12px;text-align:center;line-height:52px;font-size:24px;">
-                              &#9200;
-                            </div>
-                          </td>
-                          <td style="padding-left:16px;vertical-align:middle;">
-                            <p style="margin:0 0 3px;color:#ffffff;font-size:16px;font-weight:700;letter-spacing:0.02em;">
-                              Demander un délai supplémentaire
-                            </p>
-                            <p style="margin:0;color:#c4a55a;font-size:12px;">
-                              Votre demande sera transmise immédiatement à l'agence
-                            </p>
-                          </td>
-                          <td style="width:28px;text-align:right;vertical-align:middle;">
-                            <span style="color:${GOLD};font-size:22px;font-weight:300;">&#8250;</span>
-                          </td>
-                        </tr></table>
-                      </td>
-                    </tr>
-                  </table>
-                </a>
-              </td>
+              <td style="height:1px;background:#e8dcc8;font-size:0;">&nbsp;</td>
             </tr>
           </table>
+
+          <p style="margin:0 0 14px;text-align:center;color:#9a8060;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;">
+            Vous ne pouvez pas rendre les clés à temps ?
+          </p>
+
+          <!-- Big CTA button -->
+          <a href="${appUrl}/delay-request?id=${params.movementId}" target="_blank"
+             style="display:block;text-decoration:none;">
+            <table width="100%" cellpadding="0" cellspacing="0"
+                   style="border-radius:14px;overflow:hidden;">
+              <!-- Colored top accent -->
+              <tr>
+                <td style="background:${GOLD};padding:9px 20px;text-align:center;">
+                  <span style="color:#fff;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.14em;">
+                    Cliquez ici avant l'échéance pour éviter la pénalité de 50&nbsp;€
+                  </span>
+                </td>
+              </tr>
+              <!-- Main body -->
+              <tr>
+                <td style="background:#111827;padding:18px 22px;">
+                  <table width="100%" cellpadding="0" cellspacing="0"><tr>
+                    <!-- Icon -->
+                    <td style="width:56px;vertical-align:middle;">
+                      <table cellpadding="0" cellspacing="0"><tr>
+                        <td style="width:56px;height:56px;background:rgba(184,146,74,0.12);border:2px solid ${GOLD};border-radius:12px;text-align:center;vertical-align:middle;font-size:26px;line-height:56px;">
+                          &#9200;
+                        </td>
+                      </tr></table>
+                    </td>
+                    <!-- Text -->
+                    <td style="padding-left:16px;vertical-align:middle;">
+                      <p style="margin:0 0 4px;color:#ffffff;font-size:17px;font-weight:800;letter-spacing:0.01em;line-height:1.2;">
+                        Demander un délai supplémentaire
+                      </p>
+                      <p style="margin:0;color:${GOLD_LIGHT};font-size:12px;line-height:1.4;">
+                        Votre demande est transmise immédiatement à l'agence
+                      </p>
+                    </td>
+                    <!-- Arrow -->
+                    <td style="width:30px;text-align:right;vertical-align:middle;">
+                      <span style="color:${GOLD};font-size:28px;font-weight:200;line-height:1;">&#8250;</span>
+                    </td>
+                  </tr></table>
+                </td>
+              </tr>
+              <!-- Bottom note -->
+              <tr>
+                <td style="background:#1a1a1a;padding:7px 20px;text-align:center;border-top:1px solid rgba(184,146,74,0.3);">
+                  <span style="color:#6b7280;font-size:10px;">
+                    Ce lien est personnel et lié à votre dossier
+                  </span>
+                </td>
+              </tr>
+            </table>
+          </a>
+
         </td>
       </tr>` : '';
 
@@ -124,16 +160,16 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
 
   <!-- Logo header -->
   <tr>
-    <td style="background:#ffffff;padding:36px 40px 28px;text-align:center;">
-      <img src="${logoUrl}" alt="LOTIER Immobilier" width="110" height="110"
-           style="width:110px;height:110px;border-radius:50%;display:block;margin:0 auto 18px;" />
+    <td style="background:#ffffff;padding:36px 40px 24px;text-align:center;">
+      <img src="${logoData}" alt="LOTIER Immobilier" width="110" height="110"
+           style="width:110px;height:110px;border-radius:50%;display:block;margin:0 auto 16px;" />
       <p style="margin:0;color:#9a8060;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.18em;">
         Gestion Locative
       </p>
     </td>
   </tr>
 
-  <!-- Gradient divider -->
+  <!-- Divider -->
   <tr>
     <td style="background:#ffffff;padding:0 40px;">
       <table width="100%" cellpadding="0" cellspacing="0"><tr>
@@ -142,7 +178,7 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
     </td>
   </tr>
 
-  <!-- Hero band -->
+  <!-- Hero -->
   <tr>
     <td style="background:#ffffff;padding:28px 40px 24px;text-align:center;">
       <h1 style="margin:0;color:${DARK};font-size:26px;font-weight:300;letter-spacing:0.08em;text-transform:uppercase;line-height:1.2;">
@@ -154,29 +190,26 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
 
   <!-- Greeting -->
   <tr>
-    <td style="background:#ffffff;padding:4px 40px 24px;">
-      <p style="margin:0;color:${SLATE};font-size:15px;line-height:1.7;text-align:center;">
-        Bonjour <strong style="color:${DARK};">${params.contactName}</strong>,<br>
-        <span style="color:#6b7280;font-size:13px;">Veuillez trouver ci-dessous la confirmation de remise de clés.<br>
-        Conservez cet email comme <strong>justificatif officiel</strong>.</span>
+    <td style="background:#ffffff;padding:4px 40px 24px;text-align:center;">
+      <p style="margin:0;color:#374151;font-size:15px;line-height:1.7;">
+        Bonjour <strong style="color:${DARK};">${params.contactName}</strong>,
+      </p>
+      <p style="margin:6px 0 0;color:#6b7280;font-size:13px;line-height:1.6;">
+        Veuillez trouver ci-dessous la confirmation de remise de clés.<br>
+        Conservez cet email comme <strong style="color:${DARK};">justificatif officiel</strong>.
       </p>
     </td>
   </tr>
 
-  <!-- Keys section -->
+  <!-- Keys -->
   <tr>
     <td style="background:#ffffff;padding:0 32px 24px;">
-      <table width="100%" cellpadding="0" cellspacing="0"
-             style="border:1px solid #e8dcc8;border-radius:12px;overflow:hidden;">
-        <!-- Section header -->
+      <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e8dcc8;border-radius:12px;overflow:hidden;">
         <tr>
-          <td style="background:#faf6ef;padding:12px 16px;border-bottom:2px solid ${GOLD};">
-            <table cellpadding="0" cellspacing="0"><tr>
-              <td style="color:${GOLD};font-size:14px;padding-right:8px;">&#128273;</td>
-              <td style="color:${DARK};font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;">
-                Clés remises
-              </td>
-            </tr></table>
+          <td style="background:#faf6ef;padding:11px 16px;border-bottom:2px solid ${GOLD};">
+            <span style="color:${DARK};font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;">
+              &#128273;&nbsp; Clés remises
+            </span>
           </td>
         </tr>
         ${keyRows}
@@ -184,27 +217,27 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
     </td>
   </tr>
 
-  <!-- Property + Dates: two-col -->
+  <!-- Property -->
   <tr>
     <td style="background:#ffffff;padding:0 32px 24px;">
       <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:12px;overflow:hidden;border:1px solid #e8dcc8;">
         <tr>
-          <td style="background:#faf6ef;padding:12px 16px;border-bottom:2px solid ${GOLD};">
-            <span style="color:${DARK};font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;">
+          <td style="background:#faf6ef;padding:11px 16px;border-bottom:2px solid ${GOLD};">
+            <span style="color:${DARK};font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.1em;">
               &#127968;&nbsp; Bien concerné
             </span>
           </td>
         </tr>
         <tr>
-          <td style="padding:14px 16px;border-bottom:1px solid #f0ead8;">
+          <td style="padding:13px 16px;border-bottom:1px solid #f0ead8;">
             <span style="color:#9a8060;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:3px;">Référence</span>
             <span style="color:${DARK};font-size:15px;font-weight:700;">${params.propertyReference}</span>
           </td>
         </tr>
         <tr>
-          <td style="padding:14px 16px;">
+          <td style="padding:13px 16px;">
             <span style="color:#9a8060;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:3px;">Adresse</span>
-            <span style="color:${SLATE};font-size:14px;">${params.propertyAddress}</span>
+            <span style="color:#374151;font-size:14px;">${params.propertyAddress}</span>
           </td>
         </tr>
       </table>
@@ -216,20 +249,17 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
     <td style="background:#ffffff;padding:0 32px 24px;">
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
-          <!-- Out date -->
           <td width="44%" style="background:#f8f9fa;border:1px solid #e8dcc8;border-radius:10px;padding:14px 16px;vertical-align:top;">
-            <span style="color:#9a8060;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">
+            <span style="color:#9a8060;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px;">
               &#128197;&nbsp; Remis le
             </span>
             <span style="color:${DARK};font-size:13px;font-weight:600;">${outDate}</span>
           </td>
-          <!-- Arrow -->
           <td width="12%" style="text-align:center;vertical-align:middle;">
             <span style="color:${GOLD};font-size:24px;font-weight:300;">&#8594;</span>
           </td>
-          <!-- Return date -->
           <td width="44%" style="background:${DARK};border:2px solid ${GOLD};border-radius:10px;padding:14px 16px;vertical-align:top;">
-            <span style="color:${GOLD_LIGHT};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:6px;">
+            <span style="color:${GOLD_LIGHT};font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:5px;">
               &#9201;&nbsp; À rendre avant le
             </span>
             <span style="color:#ffffff;font-size:13px;font-weight:700;">${retDate}</span>
@@ -239,11 +269,10 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
     </td>
   </tr>
 
-  <!-- Penalty notice -->
+  <!-- Penalty -->
   <tr>
-    <td style="background:#ffffff;padding:0 32px 28px;">
-      <table width="100%" cellpadding="0" cellspacing="0"
-             style="border-radius:12px;overflow:hidden;border:1px solid #e8dcc8;">
+    <td style="background:#ffffff;padding:0 32px 24px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-radius:12px;overflow:hidden;border:1px solid #e8dcc8;">
         <tr>
           <td style="background:#7c0000;padding:10px 18px;">
             <span style="color:#ffffff;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;">
@@ -257,8 +286,7 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
               La restitution des clés est <strong>obligatoire avant le
               <span style="color:#7c0000;">${retShort}</span></strong>.<br>
               Tout retard non signalé entraîne la facturation d'un
-              <strong style="color:#7c0000;">forfait minimum de 50&nbsp;€</strong>
-              sans préjudice des frais supplémentaires éventuels.
+              <strong style="color:#7c0000;">forfait minimum de 50&nbsp;€</strong>.
             </p>
           </td>
         </tr>
@@ -269,21 +297,20 @@ export async function sendKeyCheckoutEmail(params: CheckoutEmailParams): Promise
   <!-- Delay CTA -->
   ${delayBtn}
 
-  <!-- Footer: LOTIER banner -->
+  <!-- Footer banner (embedded) -->
   <tr>
-    <td style="padding:0;font-size:0;">
-      <img src="${footerBanner}" alt="LOTIER Immobilier — 40 rue Française 34500 Béziers"
-           width="600" style="width:100%;max-width:600px;display:block;border-top:2px solid ${GOLD};" />
+    <td style="padding:0;font-size:0;border-top:2px solid ${GOLD};">
+      <img src="${footerData}" alt="LOTIER Immobilier — 40 rue Française 34500 Béziers"
+           width="600" style="width:100%;max-width:600px;display:block;" />
     </td>
   </tr>
 
   <!-- Sub-footer -->
   <tr>
-    <td style="background:#1a1a1a;padding:12px 40px;text-align:center;border-radius:0 0 16px 16px;">
+    <td style="background:#111827;padding:12px 40px;text-align:center;border-radius:0 0 16px 16px;">
       <p style="margin:0;color:#6b7280;font-size:10px;letter-spacing:0.05em;">
-        Email automatique envoyé via
+        Email automatique &mdash; Ne pas répondre &mdash;
         <a href="https://keymanager.io" style="color:${GOLD};text-decoration:none;font-weight:600;">KeyManager.io</a>
-        &mdash; Ne pas répondre à cet email
       </p>
     </td>
   </tr>

@@ -100,7 +100,6 @@ export function MovementsPage() {
     purpose: '',
     expected_return_at: '',
     notes: '',
-    responsibility_transferred: false,
     disable_sms: false,
     agency_signature_out: '',
     provider_signature_out: '',
@@ -136,7 +135,7 @@ export function MovementsPage() {
           `)
           .eq('agency_id', profile.agency_id)
           .is('deleted_at', null)
-          .order('out_at', { ascending: false}),
+          .order('out_at', { ascending: false }),
         supabase
           .from('keys')
           .select(`
@@ -278,7 +277,7 @@ export function MovementsPage() {
         purpose: formData.purpose || null,
         expected_return_at: expectedReturnDate,
         notes: formData.notes || null,
-        responsibility_transferred: formData.responsibility_transferred,
+        responsibility_transferred: false,
         disable_sms: formData.disable_sms,
         agency_signature_out: formData.agency_signature_out,
         agency_signature_out_at: now,
@@ -364,7 +363,6 @@ export function MovementsPage() {
         purpose: '',
         expected_return_at: '',
         notes: '',
-        responsibility_transferred: false,
         disable_sms: false,
         agency_signature_out: '',
         provider_signature_out: '',
@@ -776,11 +774,11 @@ export function MovementsPage() {
                 </div>
               ) : checkoutStep === 'form' ? (
                 <form onSubmit={handleCheckout} className="space-y-4">
+                  {/* Property search */}
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
                       Sélectionner le bien *
                     </label>
-                    {/* Selected property display */}
                     {formData.selected_property_id && !showPropertyDropdown ? (() => {
                       const selectedKey = keys.find(k => k.id === formData.selected_property_id);
                       const prop = selectedKey?.property;
@@ -799,7 +797,15 @@ export function MovementsPage() {
                             </div>
                             <p className="text-sm font-medium text-slate-800 mt-1 truncate">{prop.address}</p>
                           </div>
-                          <button type="button" onClick={() => { setFormData({ ...formData, selected_property_id: '', selected_keys: [] }); setPropertySearch(''); setShowPropertyDropdown(true); }} className="ml-2 p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData({ ...formData, selected_property_id: '', selected_keys: [] });
+                              setPropertySearch('');
+                              setShowPropertyDropdown(true);
+                            }}
+                            className="ml-2 p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex-shrink-0"
+                          >
                             <X className="w-4 h-4" />
                           </button>
                         </div>
@@ -810,22 +816,30 @@ export function MovementsPage() {
                           <Search className="w-4 h-4 text-slate-400 ml-3 flex-shrink-0" />
                           <input
                             type="text"
-                            autoFocus={showPropertyDropdown}
                             placeholder="Rechercher par référence, adresse, ville..."
                             value={propertySearch}
-                            onChange={e => { setPropertySearch(e.target.value); setShowPropertyDropdown(true); }}
+                            onChange={e => {
+                              setPropertySearch(e.target.value);
+                              setShowPropertyDropdown(true);
+                            }}
                             onFocus={() => setShowPropertyDropdown(true)}
                             className="w-full px-3 py-2.5 text-sm outline-none bg-transparent"
                           />
                           {propertySearch && (
-                            <button type="button" onClick={() => setPropertySearch('')} className="mr-2 p-1 text-slate-400 hover:text-slate-600">
+                            <button
+                              type="button"
+                              onClick={() => setPropertySearch('')}
+                              className="mr-2 p-1 text-slate-400 hover:text-slate-600"
+                            >
                               <X className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
                         {showPropertyDropdown && (() => {
                           const search = propertySearch.toLowerCase().trim();
-                          const uniqueRefs = Array.from(new Set(keys.filter(k => k.property?.reference).map(k => k.property!.reference)));
+                          const uniqueRefs = Array.from(new Set(
+                            keys.filter(k => k.property?.reference).map(k => k.property!.reference)
+                          ));
                           const filtered = uniqueRefs
                             .map(ref => keys.find(k => k.property?.reference === ref)!)
                             .filter(k => {
@@ -866,10 +880,19 @@ export function MovementsPage() {
                                   >
                                     <div className="flex items-center justify-between gap-2">
                                       <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{p.reference}</span>
-                                        {p.city && <span className="inline-flex items-center gap-1 text-xs text-slate-500"><MapPin className="w-3 h-3" />{p.postal_code ? `${p.postal_code} ` : ''}{p.city}</span>}
+                                        <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                          {p.reference}
+                                        </span>
+                                        {p.city && (
+                                          <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                                            <MapPin className="w-3 h-3" />
+                                            {p.postal_code ? `${p.postal_code} ` : ''}{p.city}
+                                          </span>
+                                        )}
                                       </div>
-                                      <span className="text-xs text-slate-400 flex-shrink-0">{keysCount} clé{keysCount > 1 ? 's' : ''}</span>
+                                      <span className="text-xs text-slate-400 flex-shrink-0">
+                                        {keysCount} clé{keysCount > 1 ? 's' : ''}
+                                      </span>
                                     </div>
                                     <p className="text-sm text-slate-700 mt-0.5 truncate">{p.address}</p>
                                   </button>
@@ -891,7 +914,9 @@ export function MovementsPage() {
                     return (
                       <div className="bg-slate-50 rounded-lg p-3">
                         <p className="text-sm font-medium text-slate-700 mb-2">
-                          {formData.is_partial_keyring ? `Clés sélectionnées (${formData.selected_keys.length}/${keysForProperty.length})` : `Toutes les clés du trousseau (${keysForProperty.length})`} :
+                          {formData.is_partial_keyring
+                            ? `Clés sélectionnées (${formData.selected_keys.length}/${keysForProperty.length})`
+                            : `Toutes les clés du trousseau (${keysForProperty.length})`} :
                         </p>
                         <div className="space-y-1">
                           {keysForProperty.map(key => (
@@ -903,23 +928,15 @@ export function MovementsPage() {
                                 onChange={(e) => {
                                   if (formData.is_partial_keyring) {
                                     if (e.target.checked) {
-                                      setFormData({
-                                        ...formData,
-                                        selected_keys: [...formData.selected_keys, key.id]
-                                      });
+                                      setFormData({ ...formData, selected_keys: [...formData.selected_keys, key.id] });
                                     } else {
-                                      setFormData({
-                                        ...formData,
-                                        selected_keys: formData.selected_keys.filter(id => id !== key.id)
-                                      });
+                                      setFormData({ ...formData, selected_keys: formData.selected_keys.filter(id => id !== key.id) });
                                     }
                                   }
                                 }}
                                 className="w-4 h-4 text-amber-700 border-slate-300 rounded focus:ring-primary disabled:opacity-50"
                               />
-                              <label className="ml-2 text-sm text-slate-600">
-                                {key.label}
-                              </label>
+                              <label className="ml-2 text-sm text-slate-600">{key.label}</label>
                             </div>
                           ))}
                         </div>
@@ -1076,19 +1093,17 @@ export function MovementsPage() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <input
-                        id="disable_sms"
-                        type="checkbox"
-                        checked={formData.disable_sms}
-                        onChange={(e) => setFormData({ ...formData, disable_sms: e.target.checked })}
-                        className="w-4 h-4 text-amber-700 border-slate-300 rounded focus:ring-primary"
-                      />
-                      <label htmlFor="disable_sms" className="ml-2 text-sm text-slate-700">
-                        Désactiver les SMS pour ce prêt
-                      </label>
-                    </div>
+                  <div className="flex items-center">
+                    <input
+                      id="disable_sms"
+                      type="checkbox"
+                      checked={formData.disable_sms}
+                      onChange={(e) => setFormData({ ...formData, disable_sms: e.target.checked })}
+                      className="w-4 h-4 text-amber-700 border-slate-300 rounded focus:ring-primary"
+                    />
+                    <label htmlFor="disable_sms" className="ml-2 text-sm text-slate-700">
+                      Désactiver les SMS pour ce prêt
+                    </label>
                   </div>
 
                   <div className="flex space-x-4 pt-4">
@@ -1178,7 +1193,10 @@ export function MovementsPage() {
         )}
 
         {showPhotoViewer.show && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => setShowPhotoViewer({ show: false, url: '', type: 'out' })}>
+          <div
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowPhotoViewer({ show: false, url: '', type: 'out' })}
+          >
             <div className="bg-white rounded-xl p-4 max-w-4xl w-full" onClick={(e) => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-slate-900">
@@ -1197,7 +1215,10 @@ export function MovementsPage() {
         )}
 
         {showSignaturesViewer.show && showSignaturesViewer.movement && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4" onClick={() => setShowSignaturesViewer({ show: false, movement: null, type: 'out' })}>
+          <div
+            className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowSignaturesViewer({ show: false, movement: null, type: 'out' })}
+          >
             <div className="bg-white rounded-xl p-6 max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-bold text-slate-900">
@@ -1235,7 +1256,10 @@ export function MovementsPage() {
         )}
 
         {showEditModal.show && showEditModal.movement && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowEditModal({ show: false, movement: null })}>
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowEditModal({ show: false, movement: null })}
+          >
             <div className="bg-white rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
               <h3 className="text-xl font-bold text-slate-900 mb-4">Modifier le mouvement</h3>
 
@@ -1294,10 +1318,7 @@ export function MovementsPage() {
 
                 <div className="flex space-x-3">
                   <button
-                    onClick={() => {
-                      setShowEditModal({ show: false, movement: null });
-                      setEditReason('');
-                    }}
+                    onClick={() => { setShowEditModal({ show: false, movement: null }); setEditReason(''); }}
                     className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
                   >
                     Annuler
@@ -1315,7 +1336,10 @@ export function MovementsPage() {
         )}
 
         {showDeleteModal.show && showDeleteModal.movement && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setShowDeleteModal({ show: false, movement: null })}>
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowDeleteModal({ show: false, movement: null })}
+          >
             <div className="bg-white rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
               <h3 className="text-xl font-bold text-red-600 mb-4">Supprimer le mouvement</h3>
 
@@ -1343,10 +1367,7 @@ export function MovementsPage() {
 
                 <div className="flex space-x-3">
                   <button
-                    onClick={() => {
-                      setShowDeleteModal({ show: false, movement: null });
-                      setDeleteReason('');
-                    }}
+                    onClick={() => { setShowDeleteModal({ show: false, movement: null }); setDeleteReason(''); }}
                     className="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition"
                   >
                     Annuler

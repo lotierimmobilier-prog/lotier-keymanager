@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { Plus, CheckCircle, Activity, Filter, FileSignature, Image as ImageIcon, Pencil, Trash2 } from 'lucide-react';
+import { Plus, CheckCircle, Activity, Filter, Ligature as FileSignature, Image as ImageIcon, Pencil, Trash2, Search, X, MapPin, Hash, Building2 } from 'lucide-react';
 import { SignatureCanvas } from '../../components/SignatureCanvas';
 import { PhotoUpload } from '../../components/PhotoUpload';
 
@@ -85,6 +85,8 @@ export function MovementsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState<{ show: boolean; movement: Movement | null }>({ show: false, movement: null });
   const [editReason, setEditReason] = useState('');
   const [deleteReason, setDeleteReason] = useState('');
+  const [propertySearch, setPropertySearch] = useState('');
+  const [showPropertyDropdown, setShowPropertyDropdown] = useState(false);
   const [formData, setFormData] = useState({
     key_id: '',
     is_partial_keyring: false,
@@ -345,6 +347,8 @@ export function MovementsPage() {
       setShowPhotoModal({ show: false, type: 'out' });
       setShowCheckoutModal(false);
       setCheckoutStep('form');
+      setPropertySearch('');
+      setShowPropertyDropdown(false);
       setFormData({
         key_id: '',
         is_partial_keyring: false,
@@ -769,37 +773,109 @@ export function MovementsPage() {
               ) : checkoutStep === 'form' ? (
                 <form onSubmit={handleCheckout} className="space-y-4">
                   <div>
-                    <label htmlFor="property_select" className="block text-sm font-medium text-slate-700 mb-1">
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
                       Sélectionner le bien *
                     </label>
-                    <select
-                      id="property_select"
-                      value={formData.selected_property_id}
-                      onChange={(e) => {
-                        const propertyId = e.target.value;
-                        const selectedKey = keys.find(k => k.id === propertyId);
-                        if (selectedKey && selectedKey.property) {
-                          const keysForProperty = keys.filter(k => k.property?.reference === selectedKey.property?.reference);
-                          setFormData({
-                            ...formData,
-                            selected_property_id: propertyId,
-                            selected_keys: formData.is_partial_keyring ? [] : keysForProperty.map(k => k.id)
-                          });
-                        }
-                      }}
-                      required
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary mb-2"
-                    >
-                      <option value="">Choisir un bien...</option>
-                      {Array.from(new Set(keys.filter(k => k.property?.reference).map(k => k.property!.reference))).map(ref => {
-                        const key = keys.find(k => k.property?.reference === ref)!;
-                        return (
-                          <option key={key.id} value={key.id}>
-                            {key.property!.reference} - {key.property!.address}
-                          </option>
-                        );
-                      })}
-                    </select>
+                    {/* Selected property display */}
+                    {formData.selected_property_id && !showPropertyDropdown ? (() => {
+                      const selectedKey = keys.find(k => k.id === formData.selected_property_id);
+                      const prop = selectedKey?.property;
+                      return prop ? (
+                        <div className="flex items-center justify-between p-3 border-2 border-primary rounded-lg bg-primary/5 mb-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="inline-flex items-center gap-1 text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
+                                <Hash className="w-3 h-3" />{prop.reference}
+                              </span>
+                              {prop.city && (
+                                <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+                                  <MapPin className="w-3 h-3" />{prop.city}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium text-slate-800 mt-1 truncate">{prop.address}</p>
+                          </div>
+                          <button type="button" onClick={() => { setFormData({ ...formData, selected_property_id: '', selected_keys: [] }); setPropertySearch(''); setShowPropertyDropdown(true); }} className="ml-2 p-1 rounded-full hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex-shrink-0">
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : null;
+                    })() : (
+                      <div className="relative mb-2">
+                        <div className="flex items-center border border-slate-300 rounded-lg focus-within:ring-2 focus-within:ring-primary focus-within:border-primary overflow-hidden">
+                          <Search className="w-4 h-4 text-slate-400 ml-3 flex-shrink-0" />
+                          <input
+                            type="text"
+                            autoFocus={showPropertyDropdown}
+                            placeholder="Rechercher par référence, adresse, ville..."
+                            value={propertySearch}
+                            onChange={e => { setPropertySearch(e.target.value); setShowPropertyDropdown(true); }}
+                            onFocus={() => setShowPropertyDropdown(true)}
+                            className="w-full px-3 py-2.5 text-sm outline-none bg-transparent"
+                          />
+                          {propertySearch && (
+                            <button type="button" onClick={() => setPropertySearch('')} className="mr-2 p-1 text-slate-400 hover:text-slate-600">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                        {showPropertyDropdown && (() => {
+                          const search = propertySearch.toLowerCase().trim();
+                          const uniqueRefs = Array.from(new Set(keys.filter(k => k.property?.reference).map(k => k.property!.reference)));
+                          const filtered = uniqueRefs
+                            .map(ref => keys.find(k => k.property?.reference === ref)!)
+                            .filter(k => {
+                              if (!search) return true;
+                              const p = k.property!;
+                              return (
+                                p.reference?.toLowerCase().includes(search) ||
+                                p.address?.toLowerCase().includes(search) ||
+                                p.city?.toLowerCase().includes(search) ||
+                                p.postal_code?.toLowerCase().includes(search)
+                              );
+                            });
+                          return (
+                            <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl max-h-64 overflow-y-auto">
+                              {filtered.length === 0 ? (
+                                <div className="px-4 py-6 text-center text-sm text-slate-400">
+                                  <Building2 className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                                  Aucun bien trouvé
+                                </div>
+                              ) : filtered.map(k => {
+                                const p = k.property!;
+                                const keysCount = keys.filter(kk => kk.property?.reference === p.reference).length;
+                                return (
+                                  <button
+                                    key={k.id}
+                                    type="button"
+                                    onMouseDown={() => {
+                                      const keysForProperty = keys.filter(kk => kk.property?.reference === p.reference);
+                                      setFormData({
+                                        ...formData,
+                                        selected_property_id: k.id,
+                                        selected_keys: formData.is_partial_keyring ? [] : keysForProperty.map(kk => kk.id)
+                                      });
+                                      setShowPropertyDropdown(false);
+                                      setPropertySearch('');
+                                    }}
+                                    className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0 transition-colors"
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">{p.reference}</span>
+                                        {p.city && <span className="inline-flex items-center gap-1 text-xs text-slate-500"><MapPin className="w-3 h-3" />{p.postal_code ? `${p.postal_code} ` : ''}{p.city}</span>}
+                                      </div>
+                                      <span className="text-xs text-slate-400 flex-shrink-0">{keysCount} clé{keysCount > 1 ? 's' : ''}</span>
+                                    </div>
+                                    <p className="text-sm text-slate-700 mt-0.5 truncate">{p.address}</p>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
 
                   {formData.selected_property_id && (() => {

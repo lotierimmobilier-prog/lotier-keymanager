@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import { DashboardLayout } from '../../components/DashboardLayout';
-import { Save, MessageSquare, Info, Server, Key } from 'lucide-react';
+import { Save, MessageSquare, Info, Zap } from 'lucide-react';
 
 interface SmsTemplate {
   id: string;
@@ -87,62 +87,48 @@ export function SmsConfigPage() {
           </p>
         </div>
 
-        {/* SMPP Configuration Block */}
+        {/* Twilio Configuration Block */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-6">
           <div className="flex items-center space-x-3 mb-4">
-            <Server className="w-6 h-6 text-slate-700" />
-            <h2 className="text-lg font-semibold text-slate-900">Connexion OVH SMPP</h2>
+            <Zap className="w-6 h-6 text-blue-600" />
+            <h2 className="text-lg font-semibold text-slate-900">Connexion Twilio</h2>
           </div>
           <p className="text-sm text-slate-600 mb-4">
-            La connexion s'effectue via le protocole SMPP. Configurez les secrets suivants dans votre projet Supabase
+            Configurez les 3 secrets suivants dans votre projet Supabase
             (<span className="font-mono text-xs bg-slate-100 px-1 rounded">Project Settings → Edge Functions → Secrets</span>).
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200">
-                  <th className="text-left pb-2 font-semibold text-slate-700 pr-4">Secret Supabase</th>
-                  <th className="text-left pb-2 font-semibold text-slate-700 pr-4">Valeur</th>
+                  <th className="text-left pb-2 font-semibold text-slate-700 pr-6">Secret Supabase</th>
+                  <th className="text-left pb-2 font-semibold text-slate-700 pr-6">Valeur</th>
                   <th className="text-left pb-2 font-semibold text-slate-700">Où trouver</th>
                 </tr>
               </thead>
               <tbody className="text-slate-600">
                 <tr className="border-b border-slate-100">
-                  <td className="py-2 pr-4 font-mono text-xs text-amber-800 bg-amber-50 rounded px-2">OVH_SMPP_SYSTEM_ID</td>
-                  <td className="py-2 pr-4">Votre SystemID</td>
-                  <td className="py-2">OVH → SMS → Paramètres SMPP → SystemID</td>
+                  <td className="py-2.5 pr-6"><code className="font-mono text-xs text-blue-800 bg-blue-50 px-2 py-1 rounded">TWILIO_ACCOUNT_SID</code></td>
+                  <td className="py-2.5 pr-6">ACxxxxxxxxxxxxxxxx</td>
+                  <td className="py-2.5">Console Twilio → Dashboard → Account SID</td>
                 </tr>
                 <tr className="border-b border-slate-100">
-                  <td className="py-2 pr-4 font-mono text-xs text-amber-800 bg-amber-50 rounded px-2">OVH_SMPP_PASSWORD</td>
-                  <td className="py-2 pr-4">Votre mot de passe SMPP</td>
-                  <td className="py-2">OVH → Cliquer "Générer un nouveau mot de passe"</td>
-                </tr>
-                <tr className="border-b border-slate-100">
-                  <td className="py-2 pr-4 font-mono text-xs text-amber-800 bg-amber-50 rounded px-2">OVH_SMPP_HOST</td>
-                  <td className="py-2 pr-4"><code className="bg-slate-100 px-1 rounded text-xs">gra.smpp.ovh</code></td>
-                  <td className="py-2">OVH → Paramètres SMPP (ou sbg.smpp.ovh)</td>
-                </tr>
-                <tr className="border-b border-slate-100">
-                  <td className="py-2 pr-4 font-mono text-xs text-amber-800 bg-amber-50 rounded px-2">OVH_SMPP_PORT</td>
-                  <td className="py-2 pr-4"><code className="bg-slate-100 px-1 rounded text-xs">2775</code> (ou 2776 TLS)</td>
-                  <td className="py-2">2775 = non chiffré, 2776 = TLS</td>
+                  <td className="py-2.5 pr-6"><code className="font-mono text-xs text-blue-800 bg-blue-50 px-2 py-1 rounded">TWILIO_AUTH_TOKEN</code></td>
+                  <td className="py-2.5 pr-6">Votre Auth Token</td>
+                  <td className="py-2.5">Console Twilio → Dashboard → Auth Token</td>
                 </tr>
                 <tr>
-                  <td className="py-2 pr-4 font-mono text-xs text-amber-800 bg-amber-50 rounded px-2">OVH_SMS_SENDER</td>
-                  <td className="py-2 pr-4">Ex: <code className="bg-slate-100 px-1 rounded text-xs">Lotier</code></td>
-                  <td className="py-2">Nom affiché sur le SMS (max 11 car.)</td>
+                  <td className="py-2.5 pr-6"><code className="font-mono text-xs text-blue-800 bg-blue-50 px-2 py-1 rounded">TWILIO_FROM</code></td>
+                  <td className="py-2.5 pr-6"><code className="bg-slate-100 px-1 rounded text-xs">+33XXXXXXXXX</code> ou nom alphanumérique</td>
+                  <td className="py-2.5">Console Twilio → Phone Numbers</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
-            <div className="flex items-start space-x-2">
-              <Key className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
-              <div className="text-sm text-amber-900">
-                <p className="font-semibold mb-1">Autorisation IP OVH</p>
-                <p>OVH SMPP requiert une IP autorisée. Dans <strong>Paramètres SMPP → IPs autorisées</strong>, ajoutez <code className="bg-amber-100 px-1 rounded">0.0.0.0/0</code> pour autoriser toutes les IPs (nécessaire car Supabase n'a pas d'IP fixe), ou contactez le support OVH pour connaître les plages IP de Supabase.</p>
-              </div>
-            </div>
+          <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs text-blue-800">
+              <strong>Compte gratuit :</strong> Twilio offre un crédit d'essai. Pour envoyer en production vers des numéros français, passez en compte payant et achetez un numéro FR (~1€/mois) ou activez un sender alphanumérique.
+            </p>
           </div>
         </div>
 

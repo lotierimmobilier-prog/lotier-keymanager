@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,73 +16,92 @@ interface SendSmsRequest {
   type: 'key_taken' | 'key_due_2h' | 'key_overdue';
 }
 
-async function sendTwilioSms(to: string, message: string): Promise<{ success: boolean; error?: string }> {
+function formatPhone(to: string): string {
+  const clean = to.replace(/[\s.\-()/]/g, '');
+  if (clean.startsWith('0')) return '+33' + clean.substring(1);
+  if (clean.startsWith('+')) return clean;
+  return '+33' + clean;
+}
+
+async function sendOvhSms(to: string, message: string): Promise<{ success: boolean; error?: string }> {
+  const appKey = Deno.env.get('OVH_APP_KEY');
+  const appSecret = Deno.env.get('OVH_APP_SECRET');
+  const consumerKey = Deno.env.get('OVH_CONSUMER_KEY');
+  const serviceName = Deno.env.get('OVH_SMS_ACCOUNT');
+  const sender = Deno.env.get('OVH_SMS_SENDER');
+
+  if (!appKey || !appSecret || !consumerKey || !serviceName) {
+    return { success: false, error: 'Configuration OVH manquante (OVH_APP_KEY, OVH_APP_SECRET, OVH_CONSUMER_KEY, OVH_SMS_ACCOUNT)' };
+  }
+
+  const phone = formatPhone(to);
+
+  // Récupérer le timestamp serveur OVH pour éviter les décalages
+  let timestamp: string;
   try {
-    const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
-    const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
-    const fromPhone = Deno.env.get('TWILIO_PHONE_NUMBER');
+    const timeRes = await fetch('https://eu.api.ovh.com/1.0/auth/time');
+    const serverTime = await timeRes.json();
+    timestamp = serverTime.toString();
+  } catch {
+    timestamp = Math.floor(Date.now() / 1000).toString();
+  }
 
-    if (!accountSid || !authToken || !fromPhone) {
-      return { success: false, error: 'Configuration Twilio manquante' };
-    }
+  const url = `https://eu.api.ovh.com/1.0/sms/${serviceName}/jobs`;
+  const bodyObj: Record<string, unknown> = {
+    message,
+    receivers: [phone],
+    noStopClause: false,
+    senderForResponse: !sender,
+  };
+  if (sender) bodyObj.sender = sender;
 
-    const cleanPhone = to.replace(/[\s.\-]/g, '');
+  const body = JSON.stringify(bodyObj);
 
-    const internationalPhone = cleanPhone.startsWith('0')
-      ? '+33' + cleanPhone.substring(1)
-      : cleanPhone.startsWith('+') ? cleanPhone : '+33' + cleanPhone;
+  // Signature OVH : $1$SHA1(appSecret+consumerKey+method+url+body+timestamp)
+  const sigPayload = `${appSecret}+${consumerKey}+POST+${url}+${body}+${timestamp}`;
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest('SHA-1', encoder.encode(sigPayload));
+  const hashHex = Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  const signature = `$1$${hashHex}`;
 
-    const auth = btoa(`${accountSid}:${authToken}`);
-    const url = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
-
-    const body = new URLSearchParams({
-      To: internationalPhone,
-      From: fromPhone,
-      Body: message,
-    });
-
+  try {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
+        'X-Ovh-Application': appKey,
+        'X-Ovh-Consumer': consumerKey,
+        'X-Ovh-Timestamp': timestamp,
+        'X-Ovh-Signature': signature,
       },
-      body: body.toString(),
+      body,
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('Erreur Twilio SMS:', errorData);
-
-      let errorMessage = `Erreur Twilio: ${response.status}`;
-
-      if (errorData.includes('"code":21608')) {
-        errorMessage = `Le numéro ${to} n'est pas vérifié. En mode essai Twilio, vous devez vérifier les numéros sur twilio.com/console/phone-numbers/verified avant d'envoyer des SMS.`;
-      } else {
-        try {
-          const errorJson = JSON.parse(errorData);
-          errorMessage = errorJson.message || errorData;
-        } catch {
-          errorMessage = errorData;
-        }
+      const errText = await response.text();
+      console.error('Erreur OVH SMS:', errText);
+      let errMsg = `Erreur OVH: ${response.status}`;
+      try {
+        const errJson = JSON.parse(errText);
+        errMsg = errJson.message || errJson.class || errText;
+      } catch {
+        errMsg = errText;
       }
-
-      return { success: false, error: errorMessage };
+      return { success: false, error: errMsg };
     }
 
     return { success: true };
   } catch (error) {
-    console.error('Exception lors de l\'envoi du SMS:', error);
-    return { success: false, error: error.message };
+    console.error('Exception OVH SMS:', error);
+    return { success: false, error: (error as Error).message };
   }
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      status: 200,
-      headers: corsHeaders,
-    });
+    return new Response(null, { status: 200, headers: corsHeaders });
   }
 
   try {
@@ -104,41 +124,37 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const result = await sendTwilioSms(to, message);
-
-    const logData = {
-      agency_id: agencyId,
-      contact_id: contactId || null,
-      movement_id: movementId || null,
-      type,
-      to_phone: to,
-      message,
-      status: result.success ? 'sent' : 'error',
-      error_message: result.error || null,
-    };
+    const result = await sendOvhSms(to, message);
 
     const { error: logError } = await supabaseClient
       .from('sms_logs')
-      .insert(logData);
+      .insert({
+        agency_id: agencyId,
+        contact_id: contactId || null,
+        movement_id: movementId || null,
+        type,
+        to_phone: to,
+        message,
+        status: result.success ? 'sent' : 'error',
+        error_message: result.error || null,
+      });
 
     if (logError) {
-      console.error('Erreur lors de l\'enregistrement du log SMS:', logError);
+      console.error('Erreur log SMS:', logError);
     }
 
     return new Response(
       JSON.stringify({ success: result.success, error: result.error }),
       {
         status: result.success ? 200 : 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
   } catch (error) {
     console.error('Erreur dans send-sms:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
-
-import { createClient } from 'npm:@supabase/supabase-js@2';

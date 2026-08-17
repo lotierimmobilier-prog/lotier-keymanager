@@ -21,3 +21,9 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Secrets — ne jamais versionner
+client_secret*.json
+*.pem
+*.key
+service-account*.json
